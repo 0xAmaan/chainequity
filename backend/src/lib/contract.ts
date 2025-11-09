@@ -2,26 +2,26 @@
  * Contract interaction layer using viem
  */
 
+import { readFileSync } from "fs";
+import { join } from "path";
+import type { Config } from "../types";
 import {
   createPublicClient,
   createWalletClient,
+  formatUnits,
   http,
+  parseUnits,
   type Address,
   type Hash,
   type PublicClient,
   type WalletClient,
-  formatUnits,
-  parseUnits,
-} from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { foundry } from 'viem/chains';
-import type { Config } from '../types';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { foundry } from "viem/chains";
 
 // Load contract ABI
-const abiPath = join(__dirname, 'GatedEquityToken.abi.json');
-const contractABI = JSON.parse(readFileSync(abiPath, 'utf-8'));
+const abiPath = join(__dirname, "GatedEquityToken.abi.json");
+const contractABI = JSON.parse(readFileSync(abiPath, "utf-8"));
 
 export class ChainEquityContract {
   private publicClient: PublicClient;
@@ -79,7 +79,7 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'isAllowlisted',
+      functionName: "isAllowlisted",
       args: [address],
     });
     return result as boolean;
@@ -92,7 +92,7 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'balanceOf',
+      functionName: "balanceOf",
       args: [address],
     });
     return result as bigint;
@@ -105,7 +105,8 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'totalSupply',
+      functionName: "totalSupply",
+      args: [],
     });
     return result as bigint;
   }
@@ -117,7 +118,8 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'name',
+      functionName: "name",
+      args: [],
     });
     return result as string;
   }
@@ -129,7 +131,8 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'symbol',
+      functionName: "symbol",
+      args: [],
     });
     return result as string;
   }
@@ -141,7 +144,8 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'decimals',
+      functionName: "decimals",
+      args: [],
     });
     return result as number;
   }
@@ -153,7 +157,8 @@ export class ChainEquityContract {
     const result = await this.publicClient.readContract({
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'owner',
+      functionName: "owner",
+      args: [],
     });
     return result as Address;
   }
@@ -168,7 +173,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'addToAllowlist',
+      functionName: "addToAllowlist",
       args: [address],
     });
 
@@ -184,7 +189,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'removeFromAllowlist',
+      functionName: "removeFromAllowlist",
       args: [address],
     });
 
@@ -200,7 +205,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'mint',
+      functionName: "mint",
       args: [to, amount],
     });
 
@@ -216,7 +221,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'buyback',
+      functionName: "buyback",
       args: [holder, amount],
     });
 
@@ -232,7 +237,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'executeSplit',
+      functionName: "executeSplit",
       args: [multiplier, holders],
     });
 
@@ -248,7 +253,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'changeMetadata',
+      functionName: "changeMetadata",
       args: [newName, newSymbol],
     });
 
@@ -264,7 +269,7 @@ export class ChainEquityContract {
       account: this.account,
       address: this.contractAddress,
       abi: contractABI,
-      functionName: 'transfer',
+      functionName: "transfer",
       args: [to, amount],
     });
 
@@ -315,14 +320,14 @@ export class ChainEquityContract {
   async getEvents(
     eventName: string,
     fromBlock: bigint,
-    toBlock?: bigint
+    toBlock?: bigint,
   ): Promise<any[]> {
     const logs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
       abi: contractABI,
       eventName,
       fromBlock,
-      toBlock: toBlock || 'latest',
+      toBlock: toBlock || "latest",
     });
     return logs;
   }
@@ -333,7 +338,7 @@ export class ChainEquityContract {
   watchEvents(
     eventName: string,
     onEvent: (logs: any[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const unwatch = this.publicClient.watchContractEvent({
       address: this.contractAddress,
@@ -350,7 +355,7 @@ export class ChainEquityContract {
    */
   watchAllEvents(
     onLogs: (logs: any[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
   ): () => void {
     const unwatch = this.publicClient.watchContractEvent({
       address: this.contractAddress,
@@ -365,6 +370,6 @@ export class ChainEquityContract {
 /**
  * Create a contract instance from config
  */
-export function createContract(config: Config): ChainEquityContract {
+export const createContract = (config: Config): ChainEquityContract => {
   return new ChainEquityContract(config);
-}
+};

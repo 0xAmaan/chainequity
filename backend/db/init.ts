@@ -17,7 +17,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD || "postgres";
 const DB_HOST = process.env.DB_HOST || "localhost";
 const DB_PORT = parseInt(process.env.DB_PORT || "5432");
 
-async function initDatabase() {
+const initDatabase = async () => {
   console.log("🗄️  ChainEquity Database Initialization\n");
 
   // Connect to postgres database to create chain_equity database
@@ -103,7 +103,7 @@ async function initDatabase() {
     console.error("❌ Error initializing database:", error);
     process.exit(1);
   }
-}
+};
 
 // Run initialization
 initDatabase();
