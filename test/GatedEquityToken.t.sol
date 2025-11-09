@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
-import "../src/GatedEquityToken.sol";
+import {Test} from "forge-std/Test.sol";
+import {GatedEquityToken} from "../src/GatedEquityToken.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract GatedEquityTokenTest is Test {
     GatedEquityToken public token;
@@ -37,14 +38,14 @@ contract GatedEquityTokenTest is Test {
 
     // ============ Test Group 1: Deployment & Basic Setup ============
 
-    function test_Deployment() public {
+    function test_Deployment() public view {
         assertEq(token.name(), "Test Equity");
         assertEq(token.symbol(), "TESTEQ");
         assertEq(token.totalSupply(), 0);
         assertEq(token.owner(), owner);
     }
 
-    function test_InitialAllowlistEmpty() public {
+    function test_InitialAllowlistEmpty() public view {
         assertFalse(token.isAllowlisted(alice));
         assertFalse(token.isAllowlisted(bob));
         assertFalse(token.isAllowlisted(owner));
@@ -153,7 +154,8 @@ contract GatedEquityTokenTest is Test {
 
         // Transfer from alice to bob
         vm.prank(alice);
-        token.transfer(bob, 400);
+        bool success = token.transfer(bob, 400);
+        assertTrue(success);
 
         assertEq(token.balanceOf(alice), 600);
         assertEq(token.balanceOf(bob), 400);
@@ -173,7 +175,9 @@ contract GatedEquityTokenTest is Test {
                 bob
             )
         );
-        token.transfer(bob, 400);
+        bool success = token.transfer(bob, 400);
+        // This line won't execute due to revert, but silences warning
+        assertFalse(success);
     }
 
     // Transfer from non-approved to approved → FAIL
@@ -189,7 +193,9 @@ contract GatedEquityTokenTest is Test {
                 bob
             )
         );
-        token.transfer(bob, 400);
+        bool success = token.transfer(bob, 400);
+        // This line won't execute due to revert, but silences warning
+        assertFalse(success);
     }
 
     // Revoke approval → Previously approved wallet can no longer receive
@@ -201,7 +207,8 @@ contract GatedEquityTokenTest is Test {
 
         // First transfer works
         vm.prank(alice);
-        token.transfer(bob, 200);
+        bool success = token.transfer(bob, 200);
+        assertTrue(success);
         assertEq(token.balanceOf(bob), 200);
 
         // Revoke bob's approval
@@ -216,7 +223,9 @@ contract GatedEquityTokenTest is Test {
                 bob
             )
         );
-        token.transfer(bob, 200);
+        success = token.transfer(bob, 200);
+        // This line won't execute due to revert, but silences warning
+        assertFalse(success);
     }
 
     function test_TransferFrom_RequiresBothAllowlisted() public {
@@ -230,7 +239,8 @@ contract GatedEquityTokenTest is Test {
 
         // Bob transfers from alice to himself
         vm.prank(bob);
-        token.transferFrom(alice, bob, 300);
+        bool success = token.transferFrom(alice, bob, 300);
+        assertTrue(success);
 
         assertEq(token.balanceOf(alice), 700);
         assertEq(token.balanceOf(bob), 300);
@@ -241,7 +251,8 @@ contract GatedEquityTokenTest is Test {
         token.mint(alice, 1000);
 
         vm.prank(alice);
-        token.transfer(alice, 100);
+        bool success = token.transfer(alice, 100);
+        assertTrue(success);
 
         assertEq(token.balanceOf(alice), 1000); // Balance unchanged
     }
@@ -457,7 +468,8 @@ contract GatedEquityTokenTest is Test {
 
         // 4. Transfer between approved wallets → SUCCESS
         vm.prank(alice);
-        token.transfer(bob, 400);
+        bool success = token.transfer(bob, 400);
+        assertTrue(success);
         assertEq(token.balanceOf(alice), 600);
         assertEq(token.balanceOf(bob), 400);
 
@@ -470,14 +482,17 @@ contract GatedEquityTokenTest is Test {
                 carol
             )
         );
-        token.transfer(carol, 100);
+        success = token.transfer(carol, 100);
+        // This line won't execute due to revert, but silences warning
+        assertFalse(success);
 
         // 6. Approve new wallet
         token.addToAllowlist(carol);
 
         // 7. Transfer now succeeds
         vm.prank(alice);
-        token.transfer(carol, 100);
+        success = token.transfer(carol, 100);
+        assertTrue(success);
         assertEq(token.balanceOf(carol), 100);
 
         // 8. Execute 7-for-1 split
@@ -551,7 +566,8 @@ contract GatedEquityTokenTest is Test {
         token.mint(alice, mintAmount);
 
         vm.prank(alice);
-        token.transfer(bob, transferAmount);
+        bool success = token.transfer(bob, transferAmount);
+        assertTrue(success);
 
         assertEq(token.balanceOf(alice), mintAmount - transferAmount);
         assertEq(token.balanceOf(bob), transferAmount);

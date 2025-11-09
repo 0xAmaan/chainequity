@@ -103,8 +103,8 @@ const main = async () => {
 
       log(`✓ Contract deployed at: ${contractAddress}`, "green");
 
-      // Update .env file
-      const envPath = join(__dirname, ".env");
+      // Update .env file (now in root directory)
+      const envPath = join(__dirname, "..", ".env");
       let envContent = readFileSync(envPath, "utf-8");
       envContent = envContent.replace(
         /CONTRACT_ADDRESS=.*/,

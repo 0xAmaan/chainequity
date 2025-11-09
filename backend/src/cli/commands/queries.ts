@@ -141,21 +141,31 @@ export const statusCommand = async (address: string | undefined, options: any) =
  */
 export const captableCommand = async (options: any) => {
   try {
-    console.log(chalk.blue("\n📊 Capitalization Table\n"));
-
     const { config, contract } = setupCommand(options);
     const db = new Database(config);
     const decimals = await contract.decimals();
+
+    // Get format early to determine if we show headers
+    const format = options.format || "table";
+
+    // Only show headers for table format
+    if (format === "table") {
+      console.log(chalk.blue("\n📊 Capitalization Table\n"));
+    }
 
     // Get cap table (historical or current)
     const blockNumber = options.block ? BigInt(options.block) : null;
     let capTable;
 
     if (blockNumber) {
-      console.log(chalk.gray(`📅 Historical cap table at block ${blockNumber}\n`));
+      if (format === "table") {
+        console.log(chalk.gray(`📅 Historical cap table at block ${blockNumber}\n`));
+      }
       capTable = await db.getCapTableAtBlock(blockNumber);
     } else {
-      console.log(chalk.gray("📅 Current cap table\n"));
+      if (format === "table") {
+        console.log(chalk.gray("📅 Current cap table\n"));
+      }
       capTable = await db.getCurrentCapTable();
     }
 
@@ -163,13 +173,16 @@ export const captableCommand = async (options: any) => {
     const symbol = await contract.symbol();
 
     if (capTable.length === 0) {
-      console.log(chalk.yellow("   No token holders found"));
+      if (format === "table") {
+        console.log(chalk.yellow("   No token holders found"));
+      } else if (format === "json") {
+        console.log(JSON.stringify({ holders: 0, distribution: [] }));
+      } else if (format === "csv") {
+        console.log("Address,Balance,Ownership%,Allowlisted");
+      }
       await db.close();
       return;
     }
-
-    // Format output based on --format option
-    const format = options.format || "table";
 
     switch (format) {
       case "json":

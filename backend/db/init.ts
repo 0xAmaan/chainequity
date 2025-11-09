@@ -5,11 +5,9 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
-import dotenv from "dotenv";
 import { Client } from "pg";
 
-// Load environment variables
-dotenv.config({ path: join(__dirname, "..", ".env") });
+// Bun automatically loads .env files from backend/.env
 
 const DB_NAME = process.env.DB_NAME || "chain_equity";
 const DB_USER = process.env.DB_USER || "postgres";

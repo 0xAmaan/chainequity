@@ -214,11 +214,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Function: Get cap table at specific block
+DROP FUNCTION IF EXISTS get_cap_table_at_block(BIGINT);
+
 CREATE OR REPLACE FUNCTION get_cap_table_at_block(p_block_number BIGINT)
 RETURNS TABLE (
     address VARCHAR(42),
     balance VARCHAR(78),
-    ownership_percentage NUMERIC
+    ownership_percentage NUMERIC,
+    is_allowlisted BOOLEAN
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -237,10 +240,14 @@ BEGIN
         GROUP BY COALESCE(t_to.to_address, t_from.from_address)
     )
     SELECT
-        b.addr as address,
-        b.bal::TEXT as balance,
-        ROUND((b.bal / NULLIF(SUM(b.bal) OVER (), 0)) * 100, 4) as ownership_percentage
+        b.addr::VARCHAR(42) as address,
+        b.bal::VARCHAR(78) as balance,
+        ROUND((b.bal / NULLIF(SUM(b.bal) OVER (), 0)) * 100, 4) as ownership_percentage,
+        COALESCE(a.is_allowlisted, FALSE) as is_allowlisted
     FROM balances_at_block b
+    LEFT JOIN allowlist a ON b.addr = a.address
+        AND (a.added_at_block IS NULL OR a.added_at_block <= p_block_number)
+        AND (a.removed_at_block IS NULL OR a.removed_at_block > p_block_number)
     WHERE b.bal > 0
     ORDER BY b.bal DESC;
 END;

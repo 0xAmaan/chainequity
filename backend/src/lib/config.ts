@@ -2,14 +2,12 @@
  * Configuration loader for ChainEquity backend
  */
 
-import { join } from "path";
 import type { Config } from "../types";
-export type { Config };
-import dotenv from "dotenv";
 import type { Address, Hash } from "viem";
 
-// Load environment variables
-dotenv.config({ path: join(__dirname, "..", "..", ".env") });
+export type { Config };
+
+// Bun automatically loads .env files, no need for dotenv package
 
 /**
  * Load and validate configuration from environment variables
