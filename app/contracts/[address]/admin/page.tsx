@@ -1,66 +1,67 @@
 "use client";
 
 import { useActiveAccount, useReadContract } from "thirdweb/react";
-import { gatedEquityContract } from "@/lib/frontend/contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Navbar } from "@/components/navbar";
 import { AllowlistManager } from "@/components/admin/allowlist-manager";
 import { MintTokens } from "@/components/admin/mint-tokens";
 import { BuybackShares } from "@/components/admin/buyback-shares";
 import { StockSplit } from "@/components/admin/stock-split";
 import { MetadataChange } from "@/components/admin/metadata-change";
 import { CheckAddressStatus } from "@/components/admin/check-address-status";
+import { useContract } from "@/lib/frontend/contract-context";
 
 export default function AdminPage() {
   const account = useActiveAccount();
+  const { contractInstance, isLoading: contractLoading } = useContract();
+
+  // Create dummy contract for hooks
+  const dummyContract = contractInstance || {
+    address: "0x0000000000000000000000000000000000000000",
+    chain: { id: 1, name: "dummy" },
+    abi: [],
+  };
 
   // Read contract owner
   const { data: owner, isLoading } = useReadContract({
-    contract: gatedEquityContract,
+    contract: dummyContract as any,
     method: "function owner() view returns (address)",
     params: [],
+    queryOptions: { enabled: !!contractInstance && !contractLoading },
   });
 
-  const isOwner = account?.address.toLowerCase() === owner?.toLowerCase();
+  const isOwner = account?.address?.toLowerCase() === owner?.toLowerCase();
 
   if (!account) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container mx-auto px-4 py-16">
-          <Card>
-            <CardHeader>
-              <CardTitle>Admin Access Required</CardTitle>
-              <CardDescription>
-                Please connect your wallet to access the admin dashboard.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </main>
-      </div>
+      <main className="container mx-auto px-4 py-16">
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Access Required</CardTitle>
+            <CardDescription>
+              Please connect your wallet to access the admin dashboard.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </main>
     );
   }
 
-  if (isLoading) {
+  if (isLoading || contractLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container mx-auto px-4 py-16">
-          <Card>
-            <CardHeader>
+      <main className="container mx-auto px-4 py-16">
+        <Card>
+          <CardHeader>
               <CardTitle>Loading...</CardTitle>
             </CardHeader>
           </Card>
         </main>
-      </div>
+      </main>
     );
   }
 
   if (!isOwner) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <main className="container mx-auto px-4 py-16">
+      <main className="container mx-auto px-4 py-16">
           <Card>
             <CardHeader>
               <CardTitle>Access Denied</CardTitle>
@@ -73,16 +74,12 @@ export default function AdminPage() {
               </CardDescription>
             </CardHeader>
           </Card>
-        </main>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-
-      <main className="container mx-auto px-4 py-6">
+    <main className="container mx-auto px-4 py-6">
         <div className="space-y-4">
           <div>
             <h2 className="text-2xl font-bold">Admin Dashboard</h2>
@@ -112,7 +109,6 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

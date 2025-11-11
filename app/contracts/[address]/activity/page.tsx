@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ActivityFeedList } from "@/components/activity/activity-feed-list";
+import { useContract } from "@/lib/frontend/contract-context";
 
 interface ActivityEvent {
   event_type: string;
@@ -20,18 +20,19 @@ interface ActivityEvent {
 }
 
 export default function ActivityPage() {
+  const { contractAddress, isLoading: contractLoading } = useContract();
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventType, setEventType] = useState<string>("all");
   const [autoRefresh, setAutoRefresh] = useState(false);
 
   const fetchEvents = async (type?: string) => {
+    if (!contractAddress) return;
+
     setLoading(true);
     try {
-      const url =
-        type && type !== "all"
-          ? `/api/activity?type=${type}&limit=100`
-          : "/api/activity?limit=100";
+      const typeParam = type && type !== "all" ? `&type=${type}` : "";
+      const url = `/api/activity?address=${contractAddress}${typeParam}&limit=100`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -50,8 +51,10 @@ export default function ActivityPage() {
   };
 
   useEffect(() => {
-    fetchEvents(eventType);
-  }, [eventType]);
+    if (!contractLoading && contractAddress) {
+      fetchEvents(eventType);
+    }
+  }, [eventType, contractAddress, contractLoading]);
 
   // Auto-refresh every 10 seconds if enabled
   useEffect(() => {
@@ -69,10 +72,7 @@ export default function ActivityPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-
-      <main className="container mx-auto px-4 py-6 space-y-4">
+    <main className="container mx-auto px-4 py-6 space-y-4">
         {/* Header with Compact Filter Bar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -130,7 +130,6 @@ export default function ActivityPage() {
             <ActivityFeedList events={events} />
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }

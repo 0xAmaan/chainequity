@@ -1,19 +1,48 @@
 import contractABI from "../../backend/src/lib/GatedEquityToken.abi.json";
 import { arbitrumSepolia, localhost } from "./chains";
 import { client } from "./client";
-import { getContract } from "thirdweb";
+import { getContract, type ThirdwebContract } from "thirdweb";
+import type { Chain } from "thirdweb/chains";
 
-// Get contract address from environment variable
-const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
+// Determine which chain to use based on chain ID
+export const getChainById = (chainId: number): Chain => {
+  if (chainId === 31337) return localhost;
+  if (chainId === 421614) return arbitrumSepolia;
+  // Default to localhost for unknown chains
+  return localhost;
+};
 
-// Determine which chain to use based on environment
+// Factory function to create contract instance for any address
+export const getContractInstance = (
+  address: string,
+  chainId?: number,
+): ThirdwebContract => {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const chain = chainId
+    ? getChainById(chainId)
+    : isDevelopment
+      ? localhost
+      : arbitrumSepolia;
+
+  return getContract({
+    client,
+    address,
+    chain,
+    abi: contractABI,
+  });
+};
+
+// Legacy export for backward compatibility (uses env variable)
+// This will be deprecated once all pages use the new routing
+const legacyContractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
 const isDevelopment = process.env.NODE_ENV === "development";
-const chain = isDevelopment ? localhost : arbitrumSepolia;
+const defaultChain = isDevelopment ? localhost : arbitrumSepolia;
 
-// Create contract instance
-export const gatedEquityContract = getContract({
-  client,
-  address: contractAddress,
-  chain,
-  abi: contractABI,
-});
+export const gatedEquityContract = legacyContractAddress
+  ? getContract({
+      client,
+      address: legacyContractAddress,
+      chain: defaultChain,
+      abi: contractABI,
+    })
+  : null;

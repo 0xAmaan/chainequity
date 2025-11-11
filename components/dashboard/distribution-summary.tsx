@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyableAddress } from "@/components/ui/copyable-address";
+import { useContract } from "@/lib/frontend/contract-context";
 
 interface CapTableRow {
   address: string;
@@ -11,13 +12,16 @@ interface CapTableRow {
 }
 
 export const DistributionSummary = () => {
+  const { contractAddress } = useContract();
   const [topHolders, setTopHolders] = useState<CapTableRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!contractAddress) return;
+
     const fetchTopHolders = async () => {
       try {
-        const response = await fetch("/api/captable");
+        const response = await fetch(`/api/captable?address=${contractAddress}`);
         const data = await response.json();
         if (data.success) {
           setTopHolders(data.data.slice(0, 5)); // Top 5 holders
@@ -30,7 +34,7 @@ export const DistributionSummary = () => {
     };
 
     fetchTopHolders();
-  }, []);
+  }, [contractAddress]);
 
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
@@ -49,6 +53,13 @@ export const DistributionSummary = () => {
       <CardContent>
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : topHolders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-sm text-muted-foreground">No token holders yet</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Tokens will appear here once distributed
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             {topHolders.map((holder, index) => (

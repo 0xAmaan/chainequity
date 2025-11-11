@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CapTableChart } from "@/components/captable/cap-table-chart";
 import { CapTableDataTable } from "@/components/captable/cap-table-data-table";
 import { Download } from "lucide-react";
+import { useContract } from "@/lib/frontend/contract-context";
 
 interface CapTableRow {
   address: string;
@@ -18,15 +18,20 @@ interface CapTableRow {
 }
 
 export default function CapTablePage() {
+  const { contractAddress, isLoading: contractLoading } = useContract();
   const [capTable, setCapTable] = useState<CapTableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [blockNumber, setBlockNumber] = useState("");
   const [currentBlock, setCurrentBlock] = useState<number | null>(null);
 
   const fetchCapTable = async (block?: string) => {
+    if (!contractAddress) return;
+
     setLoading(true);
     try {
-      const url = block ? `/api/captable?block=${block}` : "/api/captable";
+      const url = block
+        ? `/api/captable?address=${contractAddress}&block=${block}`
+        : `/api/captable?address=${contractAddress}`;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -45,8 +50,10 @@ export default function CapTablePage() {
   };
 
   useEffect(() => {
-    fetchCapTable();
-  }, []);
+    if (!contractLoading && contractAddress) {
+      fetchCapTable();
+    }
+  }, [contractAddress, contractLoading]);
 
   const handleHistoricalFetch = () => {
     if (!blockNumber || isNaN(Number(blockNumber))) {
@@ -91,10 +98,7 @@ export default function CapTablePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-
-      <main className="container mx-auto px-4 py-6 space-y-4">
+    <main className="container mx-auto px-4 py-6 space-y-4">
         {/* Header with Export Buttons */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -159,7 +163,6 @@ export default function CapTablePage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }

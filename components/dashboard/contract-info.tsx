@@ -2,30 +2,57 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useReadContract } from "thirdweb/react";
-import { gatedEquityContract } from "@/lib/frontend/contract";
+import { useContract } from "@/lib/frontend/contract-context";
 import { CopyableAddress } from "@/components/ui/copyable-address";
 
 export const ContractInfo = () => {
+  const { contractInstance, contractData, isLoading } = useContract();
+
+  // Create dummy contract for hooks (hooks must always be called in same order)
+  const dummyContract = contractInstance || {
+    address: "0x0000000000000000000000000000000000000000",
+    chain: { id: 1, name: "dummy" },
+    abi: [],
+  };
+
+  // Don't try to read contract data until we have a contract instance
   const { data: name } = useReadContract({
-    contract: gatedEquityContract,
+    contract: dummyContract as any,
     method: "function name() view returns (string)",
     params: [],
+    queryOptions: { enabled: !!contractInstance && !isLoading },
   });
 
   const { data: symbol } = useReadContract({
-    contract: gatedEquityContract,
+    contract: dummyContract as any,
     method: "function symbol() view returns (string)",
     params: [],
+    queryOptions: { enabled: !!contractInstance && !isLoading },
   });
 
   const { data: owner } = useReadContract({
-    contract: gatedEquityContract,
+    contract: dummyContract as any,
     method: "function owner() view returns (address)",
     params: [],
+    queryOptions: { enabled: !!contractInstance && !isLoading },
   });
 
-  const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
-  const chainId = process.env.NEXT_PUBLIC_CHAIN_ID;
+  const contractAddress = contractData?.contract_address;
+  const chainId = contractData?.chain_id;
+
+  // Show loading state AFTER hooks are called
+  if (isLoading || !contractInstance) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Contract Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Loading contract details...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

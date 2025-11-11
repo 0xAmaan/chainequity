@@ -7,7 +7,31 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "100");
     const eventType = searchParams.get("type"); // filter by event type
+    const contractAddress = searchParams.get("address");
 
+    if (!contractAddress) {
+      return NextResponse.json(
+        { success: false, error: "Contract address is required" },
+        { status: 400 },
+      );
+    }
+
+    // Get contract ID from address
+    const contractResult = await query(
+      "SELECT id FROM contracts WHERE LOWER(contract_address) = LOWER($1)",
+      [contractAddress],
+    );
+
+    if (contractResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Contract not found" },
+        { status: 404 },
+      );
+    }
+
+    const contractId = contractResult.rows[0].id;
+
+    // Use the get_recent_activity function
     let queryText = `
       SELECT
         event_type,
@@ -17,20 +41,15 @@ export async function GET(request: NextRequest) {
         block_number,
         block_timestamp as timestamp,
         tx_hash
-      FROM recent_activity
+      FROM get_recent_activity($1, $2)
     `;
 
-    const params: any[] = [];
+    const params: any[] = [contractId, limit];
 
     // Add event type filter if specified
     if (eventType) {
-      queryText += ` WHERE event_type = $1`;
+      queryText += ` WHERE event_type = $3`;
       params.push(eventType);
-      queryText += ` ORDER BY block_number DESC, block_timestamp DESC LIMIT $2`;
-      params.push(limit);
-    } else {
-      queryText += ` ORDER BY block_number DESC, block_timestamp DESC LIMIT $1`;
-      params.push(limit);
     }
 
     const result = await query(queryText, params);
@@ -43,8 +62,8 @@ export async function GET(request: NextRequest) {
         // Fetch stock split metadata
         if (row.event_type === "stock_split") {
           const splitResult = await query(
-            `SELECT multiplier, affected_holders FROM stock_splits WHERE tx_hash = $1`,
-            [row.tx_hash],
+            `SELECT multiplier, affected_holders FROM stock_splits WHERE contract_id = $1 AND tx_hash = $2`,
+            [contractId, row.tx_hash],
           );
           if (splitResult.rows.length > 0) {
             metadata = {
@@ -57,8 +76,8 @@ export async function GET(request: NextRequest) {
         // Fetch metadata change info
         if (row.event_type === "metadata_change") {
           const metadataResult = await query(
-            `SELECT old_name, new_name, old_symbol, new_symbol FROM metadata_changes WHERE tx_hash = $1`,
-            [row.tx_hash],
+            `SELECT old_name, new_name, old_symbol, new_symbol FROM metadata_changes WHERE contract_id = $1 AND tx_hash = $2`,
+            [contractId, row.tx_hash],
           );
           if (metadataResult.rows.length > 0) {
             metadata = {

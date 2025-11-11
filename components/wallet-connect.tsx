@@ -12,6 +12,12 @@ const wallets = [
 
 export const WalletConnect = () => {
   useEffect(() => {
+    // Only suppress errors in development mode
+    // In production, ThirdWeb handles its own errors appropriately
+    if (process.env.NODE_ENV !== "development") {
+      return;
+    }
+
     // Suppress the specific nested button warning from thirdweb's modal
     const originalError = console.error;
     console.error = (...args) => {
@@ -22,6 +28,12 @@ export const WalletConnect = () => {
       ) {
         return;
       }
+
+      // Also suppress empty object errors during account switching
+      if (args.length === 1 && typeof args[0] === "object" && Object.keys(args[0]).length === 0) {
+        return;
+      }
+
       originalError(...args);
     };
 

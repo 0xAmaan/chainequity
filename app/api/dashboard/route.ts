@@ -1,35 +1,70 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { query } from "@/lib/db-api";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Get total supply from latest state (cast to numeric since balance is stored as string)
-    const totalSupplyResult = await query(
-      `SELECT SUM(balance::NUMERIC) as total_supply FROM current_cap_table`,
+    // Get contract address from query params
+    const searchParams = request.nextUrl.searchParams;
+    const contractAddress = searchParams.get("address");
+
+    if (!contractAddress) {
+      return NextResponse.json(
+        { success: false, error: "Contract address is required" },
+        { status: 400 },
+      );
+    }
+
+    // Get contract ID from address
+    const contractResult = await query(
+      "SELECT id FROM contracts WHERE LOWER(contract_address) = LOWER($1)",
+      [contractAddress],
     );
 
-    // Get total holders count (cast to numeric for comparison)
+    if (contractResult.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Contract not found" },
+        { status: 404 },
+      );
+    }
+
+    const contractId = contractResult.rows[0].id;
+
+    // Get total supply from cap table function
+    const totalSupplyResult = await query(
+      `SELECT SUM(balance::NUMERIC) as total_supply
+       FROM get_current_cap_table($1)`,
+      [contractId],
+    );
+
+    // Get total holders count
     const holdersResult = await query(
-      `SELECT COUNT(*) as total_holders FROM current_cap_table WHERE balance::NUMERIC > 0`,
+      `SELECT COUNT(*) as total_holders
+       FROM get_current_cap_table($1)
+       WHERE balance::NUMERIC > 0`,
+      [contractId],
     );
 
     // Get recent activity count (last 24 hours)
     const recentActivityResult = await query(
       `SELECT COUNT(*) as recent_count
-       FROM recent_activity
-       WHERE block_timestamp > NOW() - INTERVAL '24 hours'`,
+       FROM get_recent_activity($1, 1000) as activity
+       WHERE activity.block_timestamp > NOW() - INTERVAL '24 hours'`,
+      [contractId],
     );
 
-    // Get contract metadata (we'll need to add this to recent_activity or a metadata table)
-    // For now, we'll fetch the latest block number
+    // Get latest block number
     const latestBlockResult = await query(
-      `SELECT MAX(block_number) as latest_block FROM recent_activity`,
+      `SELECT MAX(activity.block_number) as latest_block
+       FROM get_recent_activity($1, 1000) as activity`,
+      [contractId],
     );
 
     // Get top holder percentage
     const topHolderResult = await query(
-      `SELECT MAX(ownership_percentage) as top_holder_pct FROM current_cap_table`,
+      `SELECT MAX(ownership_percentage) as top_holder_pct
+       FROM get_current_cap_table($1)`,
+      [contractId],
     );
 
     return NextResponse.json({
