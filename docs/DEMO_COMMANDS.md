@@ -1,6 +1,6 @@
 # ChainEquity Demo Script - Copy & Paste Commands
 
-**Contract Address:** `0xe7f1725e7734ce288f8367e1bb143e90bb3f0512`
+**Contract Address:** `0x5FbDB2315678afecb367f032d93F642f64180aa3`
 
 ---
 
@@ -41,7 +41,7 @@ bun run cli status 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 bun run cli approve 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 
 # Transfer 100 tokens from Account #1 to Account #2 (SHOULD SUCCEED)
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "transfer(address,uint256)" \
   0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
   100000000000000000000 \
@@ -61,7 +61,7 @@ bun run cli status 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 
 ```bash
 # Try to transfer to non-approved wallet (Account #4) - SHOULD FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "transfer(address,uint256)" \
   0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
   50000000000000000000 \
@@ -80,7 +80,7 @@ cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
 bun run cli mint 0x90F79bf6EB2c4f870365E785982E1f101E93b906 500
 
 # Try to transfer from non-approved sender to approved recipient - SHOULD FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "transfer(address,uint256)" \
   0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
   100000000000000000000 \
@@ -96,7 +96,7 @@ cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
 
 ```bash
 # First, verify transfer works (Account #1 to Account #2)
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "transfer(address,uint256)" \
   0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
   50000000000000000000 \
@@ -107,7 +107,7 @@ cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
 bun run cli revoke 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 
 # Try transfer again - SHOULD NOW FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "transfer(address,uint256)" \
   0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC \
   50000000000000000000 \
@@ -167,8 +167,8 @@ bun run cli info
 bun run cli captable
 
 # Also verify on-chain
-cast call 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 "name()(string)" --rpc-url http://127.0.0.1:8545
-cast call 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 "symbol()(string)" --rpc-url http://127.0.0.1:8545
+cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "name()(string)" --rpc-url http://127.0.0.1:8545
+cast call 0x5FbDB2315678afecb367f032d93F642f64180aa3 "symbol()(string)" --rpc-url http://127.0.0.1:8545
 ```
 
 **Expected:** Name/symbol update, all balances remain the same
@@ -246,14 +246,14 @@ bun run cli captable
 
 ```bash
 # Try to approve using non-owner account (Account #1) - SHOULD FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "addToAllowlist(address)" \
   0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
   --rpc-url http://127.0.0.1:8545 \
   --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 
 # Try to mint using non-owner - SHOULD FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "mint(address,uint256)" \
   0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65 \
   1000000000000000000000 \
@@ -261,7 +261,7 @@ cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
   --private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d
 
 # Try to execute split using non-owner - SHOULD FAIL
-cast send 0xe7f1725e7734ce288f8367e1bb143e90bb3f0512 \
+cast send 0x5FbDB2315678afecb367f032d93F642f64180aa3 \
   "executeSplit(uint256)" \
   2 \
   --rpc-url http://127.0.0.1:8545 \
