@@ -1,6 +1,9 @@
 # my folders
 .claude/
 .cursor/
+z-FigmaDesign/
+lib/forge-std/
+lib/openzeppelin-contracts/
 
 # dotenv environment variable files
 
