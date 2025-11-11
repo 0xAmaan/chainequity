@@ -57,44 +57,42 @@ export const MetadataChange = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Change Token Metadata</CardTitle>
-        <CardDescription>
-          Update the token name and symbol
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Metadata</CardTitle>
+        <CardDescription className="text-xs">
+          Update token name and symbol
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="metadata-name">Token Name</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="metadata-name" className="text-xs">Name</Label>
           <Input
             id="metadata-name"
             placeholder="ChainEquity Token"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="h-8 text-sm"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="metadata-symbol">Token Symbol</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="metadata-symbol" className="text-xs">Symbol</Label>
           <Input
             id="metadata-symbol"
             placeholder="CEQ"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            className="h-8 text-sm"
           />
         </div>
         <Button
           onClick={handleChangeMetadata}
           disabled={isPending || !name || !symbol}
+          size="sm"
           className="w-full"
         >
-          {isPending ? "Processing..." : "Update Metadata"}
+          Update
         </Button>
-        {transactionResult && (
-          <Badge variant="outline">
-            Tx: {transactionResult.transactionHash.slice(0, 10)}...
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

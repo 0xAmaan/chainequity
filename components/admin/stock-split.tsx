@@ -77,22 +77,23 @@ export const StockSplit = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Stock Split</CardTitle>
-        <CardDescription>
-          Execute a stock split for all current holders
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Stock Split</CardTitle>
+        <CardDescription className="text-xs">
+          Execute split for all holders
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="split-multiplier">Multiplier (e.g., 2 for 2-for-1)</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="split-multiplier" className="text-xs">Multiplier</Label>
           <Input
             id="split-multiplier"
             type="number"
             placeholder="2"
             value={multiplier}
             onChange={(e) => setMultiplier(e.target.value)}
+            className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         <div className="space-y-2">
@@ -100,23 +101,20 @@ export const StockSplit = () => {
             onClick={fetchHolders}
             variant="outline"
             disabled={loadingHolders}
+            size="sm"
             className="w-full"
           >
-            {loadingHolders ? "Loading..." : `Fetch Holders ${holders.length > 0 ? `(${holders.length})` : ""}`}
+            {holders.length > 0 ? `${holders.length} Holders` : "Fetch Holders"}
+          </Button>
+          <Button
+            onClick={handleSplit}
+            disabled={isPending || !multiplier || holders.length === 0}
+            size="sm"
+            className="w-full"
+          >
+            Execute
           </Button>
         </div>
-        <Button
-          onClick={handleSplit}
-          disabled={isPending || !multiplier || holders.length === 0}
-          className="w-full"
-        >
-          {isPending ? "Processing..." : "Execute Split"}
-        </Button>
-        {transactionResult && (
-          <Badge variant="outline">
-            Tx: {transactionResult.transactionHash.slice(0, 10)}...
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

@@ -49,22 +49,22 @@ export const CapTableChart = ({ data }: CapTableChartProps) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Ownership Distribution</CardTitle>
-        <CardDescription>
-          Top {Math.min(10, data.length)} holders by ownership percentage
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg">Ownership Distribution</CardTitle>
+        <CardDescription className="text-xs">
+          Top {Math.min(10, data.length)} holders
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={400}>
+      <CardContent className="p-4 pt-0">
+        <ResponsiveContainer width="100%" height={300}>
           <PieChart>
             <Pie
               data={chartData}
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={(entry) => `${entry.name}: ${entry.value.toFixed(2)}%`}
-              outerRadius={120}
+              label={(entry) => `${entry.value.toFixed(1)}%`}
+              outerRadius={100}
               fill="#8884d8"
               dataKey="value"
             >
@@ -74,9 +74,17 @@ export const CapTableChart = ({ data }: CapTableChartProps) => {
             </Pie>
             <Tooltip
               formatter={(value: number) => `${value.toFixed(2)}%`}
-              contentStyle={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}
+              contentStyle={{
+                backgroundColor: "hsl(var(--popover))",
+                border: "1px solid hsl(var(--border))",
+                borderRadius: "6px",
+                color: "hsl(var(--popover-foreground))",
+              }}
+              labelStyle={{
+                color: "hsl(var(--popover-foreground))",
+              }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ fontSize: "12px" }} />
           </PieChart>
         </ResponsiveContainer>
       </CardContent>

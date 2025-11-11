@@ -84,43 +84,43 @@ export const AllowlistManager = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Allowlist Management</CardTitle>
-        <CardDescription>
-          Add or remove addresses from the transfer allowlist
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Allowlist</CardTitle>
+        <CardDescription className="text-xs">
+          Manage transfer permissions
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="allowlist-address">Address</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="allowlist-address" className="text-xs">Address</Label>
           <Input
             id="allowlist-address"
             placeholder="0x..."
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            className="h-8 text-sm"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="space-y-2">
           <Button
             onClick={handleAddToAllowlist}
             disabled={isPending || !address}
+            size="sm"
+            className="w-full"
           >
-            {isPending ? "Processing..." : "Add to Allowlist"}
+            Add
           </Button>
           <Button
             onClick={handleRemoveFromAllowlist}
             variant="destructive"
             disabled={isPending || !address}
+            size="sm"
+            className="w-full"
           >
-            {isPending ? "Processing..." : "Remove"}
+            Remove
           </Button>
         </div>
-        {transactionResult && (
-          <Badge variant="outline" className="mt-2">
-            Tx: {transactionResult.transactionHash.slice(0, 10)}...
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

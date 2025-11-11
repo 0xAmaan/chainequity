@@ -9,6 +9,7 @@ import { MintTokens } from "@/components/admin/mint-tokens";
 import { BuybackShares } from "@/components/admin/buyback-shares";
 import { StockSplit } from "@/components/admin/stock-split";
 import { MetadataChange } from "@/components/admin/metadata-change";
+import { CheckAddressStatus } from "@/components/admin/check-address-status";
 
 export default function AdminPage() {
   const account = useActiveAccount();
@@ -81,21 +82,34 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-8">
+      <main className="container mx-auto px-4 py-6">
+        <div className="space-y-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Admin Dashboard</h2>
-            <p className="text-muted-foreground">
-              Manage your equity token contract operations
+            <h2 className="text-2xl font-bold">Admin Dashboard</h2>
+            <p className="text-sm text-muted-foreground">
+              Manage contract operations
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <AllowlistManager />
-            <MintTokens />
-            <BuybackShares />
-            <StockSplit />
-            <MetadataChange />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+            <div className="md:col-span-1 lg:col-span-2">
+              <CheckAddressStatus />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <AllowlistManager />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <MintTokens />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <BuybackShares />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <StockSplit />
+            </div>
+            <div className="md:col-span-1 lg:col-span-2">
+              <MetadataChange />
+            </div>
           </div>
         </div>
       </main>

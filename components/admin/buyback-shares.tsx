@@ -59,46 +59,44 @@ export const BuybackShares = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Buyback Shares</CardTitle>
-        <CardDescription>
-          Repurchase equity tokens from a holder
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Buyback</CardTitle>
+        <CardDescription className="text-xs">
+          Repurchase tokens from holder
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="buyback-address">Holder Address</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="buyback-address" className="text-xs">Holder</Label>
           <Input
             id="buyback-address"
             placeholder="0x..."
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            className="h-8 text-sm"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="buyback-amount">Amount</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="buyback-amount" className="text-xs">Amount</Label>
           <Input
             id="buyback-amount"
             type="number"
             placeholder="500"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         <Button
           onClick={handleBuyback}
           variant="destructive"
           disabled={isPending || !address || !amount}
+          size="sm"
           className="w-full"
         >
-          {isPending ? "Processing..." : "Buyback Tokens"}
+          Buyback
         </Button>
-        {transactionResult && (
-          <Badge variant="outline">
-            Tx: {transactionResult.transactionHash.slice(0, 10)}...
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

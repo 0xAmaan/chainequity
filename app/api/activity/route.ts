@@ -35,17 +35,53 @@ export async function GET(request: NextRequest) {
 
     const result = await query(queryText, params);
 
-    // Transform data to add metadata field for frontend
-    const transformedData = result.rows.map((row: any) => ({
-      event_type: row.event_type,
-      from_address: row.from_address,
-      to_address: row.to_address,
-      amount: row.amount,
-      block_number: row.block_number,
-      timestamp: row.timestamp,
-      tx_hash: row.tx_hash,
-      metadata: null, // Can be populated from other tables if needed
-    }));
+    // Fetch metadata for events that need it
+    const transformedData = await Promise.all(
+      result.rows.map(async (row: any) => {
+        let metadata = null;
+
+        // Fetch stock split metadata
+        if (row.event_type === "stock_split") {
+          const splitResult = await query(
+            `SELECT multiplier, affected_holders FROM stock_splits WHERE tx_hash = $1`,
+            [row.tx_hash],
+          );
+          if (splitResult.rows.length > 0) {
+            metadata = {
+              multiplier: splitResult.rows[0].multiplier,
+              affected_holders: splitResult.rows[0].affected_holders,
+            };
+          }
+        }
+
+        // Fetch metadata change info
+        if (row.event_type === "metadata_change") {
+          const metadataResult = await query(
+            `SELECT old_name, new_name, old_symbol, new_symbol FROM metadata_changes WHERE tx_hash = $1`,
+            [row.tx_hash],
+          );
+          if (metadataResult.rows.length > 0) {
+            metadata = {
+              old_name: metadataResult.rows[0].old_name,
+              new_name: metadataResult.rows[0].new_name,
+              old_symbol: metadataResult.rows[0].old_symbol,
+              new_symbol: metadataResult.rows[0].new_symbol,
+            };
+          }
+        }
+
+        return {
+          event_type: row.event_type,
+          from_address: row.from_address,
+          to_address: row.to_address,
+          amount: row.amount,
+          block_number: row.block_number,
+          timestamp: row.timestamp,
+          tx_hash: row.tx_hash,
+          metadata,
+        };
+      }),
+    );
 
     return NextResponse.json({
       success: true,

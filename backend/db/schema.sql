@@ -139,7 +139,7 @@ SELECT
 FROM transfers t
 UNION ALL
 SELECT
-    'allowlist_add' as event_type,
+    'allowlist_added' as event_type,
     a.address as address1,
     NULL as address2,
     NULL as value,
@@ -148,6 +148,17 @@ SELECT
     a.tx_hash
 FROM allowlist a
 WHERE a.is_allowlisted = TRUE
+UNION ALL
+SELECT
+    'allowlist_removed' as event_type,
+    a.address as address1,
+    NULL as address2,
+    NULL as value,
+    a.removed_at_block as block_number,
+    a.removed_at as block_timestamp,
+    a.tx_hash
+FROM allowlist a
+WHERE a.is_allowlisted = FALSE AND a.removed_at_block IS NOT NULL
 UNION ALL
 SELECT
     'stock_split' as event_type,
@@ -168,6 +179,16 @@ SELECT
     b.block_timestamp,
     b.tx_hash
 FROM buybacks b
+UNION ALL
+SELECT
+    'metadata_change' as event_type,
+    NULL as address1,
+    NULL as address2,
+    NULL as value,
+    m.block_number,
+    m.block_timestamp,
+    m.tx_hash
+FROM metadata_changes m
 ORDER BY block_number DESC, block_timestamp DESC
 LIMIT 100;
 

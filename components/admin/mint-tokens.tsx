@@ -60,45 +60,43 @@ export const MintTokens = () => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Mint Tokens</CardTitle>
-        <CardDescription>
-          Issue new equity tokens to an address
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Mint Tokens</CardTitle>
+        <CardDescription className="text-xs">
+          Issue new equity tokens
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="mint-address">Recipient Address</Label>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="mint-address" className="text-xs">Recipient</Label>
           <Input
             id="mint-address"
             placeholder="0x..."
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            className="h-8 text-sm"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="mint-amount">Amount</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="mint-amount" className="text-xs">Amount</Label>
           <Input
             id="mint-amount"
             type="number"
             placeholder="1000"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            className="h-8 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         <Button
           onClick={handleMint}
           disabled={isPending || !address || !amount}
+          size="sm"
           className="w-full"
         >
-          {isPending ? "Processing..." : "Mint Tokens"}
+          Mint
         </Button>
-        {transactionResult && (
-          <Badge variant="outline">
-            Tx: {transactionResult.transactionHash.slice(0, 10)}...
-          </Badge>
-        )}
       </CardContent>
     </Card>
   );

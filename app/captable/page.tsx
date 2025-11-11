@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CapTableChart } from "@/components/captable/cap-table-chart";
 import { CapTableDataTable } from "@/components/captable/cap-table-data-table";
+import { Download } from "lucide-react";
 
 interface CapTableRow {
   address: string;
@@ -93,85 +94,71 @@ export default function CapTablePage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-8">
+      <main className="container mx-auto px-4 py-6 space-y-4">
+        {/* Header with Export Buttons */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Capitalization Table</h2>
-            <p className="text-muted-foreground">
-              View current and historical ownership distribution
+            <h2 className="text-2xl font-bold">Cap Table</h2>
+            <p className="text-sm text-muted-foreground">
+              {currentBlock !== null ? `Viewing block ${currentBlock}` : "Current distribution"}
             </p>
           </div>
 
-          {/* Historical Snapshot Selector */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Historical Snapshot</CardTitle>
-              <CardDescription>
-                View cap table at a specific block number
-                {currentBlock && ` (Currently viewing: ${currentBlock === null ? "Latest" : `Block ${currentBlock}`})`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-4">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="block-number">Block Number</Label>
-                <Input
-                  id="block-number"
-                  type="number"
-                  placeholder="Enter block number"
-                  value={blockNumber}
-                  onChange={(e) => setBlockNumber(e.target.value)}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button onClick={handleHistoricalFetch} disabled={loading}>
-                  {loading ? "Loading..." : "Fetch"}
-                </Button>
-                <Button onClick={() => { setBlockNumber(""); fetchCapTable(); }} variant="outline">
-                  Reset to Current
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Export Buttons */}
-          <div className="flex gap-2">
-            <Button onClick={handleExportCSV} variant="outline" disabled={capTable.length === 0}>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleExportCSV}
+              variant="outline"
+              size="sm"
+              disabled={capTable.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
-            <Button onClick={handleExportJSON} variant="outline" disabled={capTable.length === 0}>
+            <Button
+              onClick={handleExportJSON}
+              variant="outline"
+              size="sm"
+              disabled={capTable.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
               Export JSON
             </Button>
           </div>
-
-          {/* Ownership Chart */}
-          {!loading && capTable.length > 0 && (
-            <CapTableChart data={capTable} />
-          )}
-
-          {/* Cap Table Data Table */}
-          {!loading && capTable.length > 0 && (
-            <CapTableDataTable data={capTable} />
-          )}
-
-          {!loading && capTable.length === 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>No Data</CardTitle>
-                <CardDescription>
-                  No cap table data found. Make sure the indexer is running and has processed events.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
-
-          {loading && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Loading...</CardTitle>
-              </CardHeader>
-            </Card>
-          )}
         </div>
+
+        {loading ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Loading cap table...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Chart and Table Side by Side - Always show to keep historical filter accessible */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {capTable.length > 0 ? (
+                <CapTableChart data={capTable} />
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No data for this block. Try a different block or reset to current.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              <CapTableDataTable
+                data={capTable}
+                blockNumber={blockNumber}
+                setBlockNumber={setBlockNumber}
+                onFetchHistorical={handleHistoricalFetch}
+                onReset={() => { setBlockNumber(""); fetchCapTable(); }}
+                loading={loading}
+              />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
