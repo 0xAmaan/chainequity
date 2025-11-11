@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ThirdwebProvider } from "thirdweb/react";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ThirdwebProvider>{children}</ThirdwebProvider>
+        <ThirdwebProvider>
+          {children}
+          <Toaster />
+        </ThirdwebProvider>
       </body>
     </html>
   );

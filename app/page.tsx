@@ -1,6 +1,6 @@
 "use client";
 
-import { WalletConnect } from "@/components/wallet-connect";
+import { Navbar } from "@/components/navbar";
 import { useActiveAccount } from "thirdweb/react";
 
 export default function Home() {
@@ -8,12 +8,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">ChainEquity</h1>
-          <WalletConnect />
-        </div>
-      </nav>
+      <Navbar />
 
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -53,24 +48,24 @@ export default function Home() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
-            <div className="rounded-lg border border-border bg-card p-6 space-y-2">
+            <a href="/admin" className="rounded-lg border border-border bg-card p-6 space-y-2 hover:bg-muted/50 transition-colors">
               <h4 className="font-semibold">Admin Operations</h4>
               <p className="text-sm text-muted-foreground">
                 Mint tokens, manage allowlist, and execute corporate actions
               </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 space-y-2">
+            </a>
+            <a href="/captable" className="rounded-lg border border-border bg-card p-6 space-y-2 hover:bg-muted/50 transition-colors">
               <h4 className="font-semibold">Cap Table Viewer</h4>
               <p className="text-sm text-muted-foreground">
                 View ownership distribution and historical snapshots
               </p>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-6 space-y-2">
+            </a>
+            <a href="/activity" className="rounded-lg border border-border bg-card p-6 space-y-2 hover:bg-muted/50 transition-colors">
               <h4 className="font-semibold">Activity Feed</h4>
               <p className="text-sm text-muted-foreground">
                 Track transfers, splits, and all on-chain events
               </p>
-            </div>
+            </a>
           </div>
         </div>
       </main>
