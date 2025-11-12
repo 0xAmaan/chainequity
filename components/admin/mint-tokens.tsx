@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSendTransaction } from "thirdweb/react";
 import { prepareContractCall } from "thirdweb";
-import { gatedEquityContract } from "@/lib/frontend/contract";
+import { useContract } from "@/lib/frontend/contract-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export const MintTokens = () => {
+  const { contractInstance } = useContract();
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
 
   const handleMint = () => {
+    if (!contractInstance) {
+      toast.error("Contract not loaded");
+      return;
+    }
+
     if (!address || !address.startsWith("0x")) {
       toast.error("Please enter a valid Ethereum address");
       return;
@@ -31,7 +37,7 @@ export const MintTokens = () => {
     const amountInWei = BigInt(Math.floor(Number(amount) * 10 ** 18));
 
     const transaction = prepareContractCall({
-      contract: gatedEquityContract,
+      contract: contractInstance,
       method: "function mint(address to, uint256 amount)",
       params: [address as `0x${string}`, amountInWei],
     });

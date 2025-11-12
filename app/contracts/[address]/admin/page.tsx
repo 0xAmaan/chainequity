@@ -51,10 +51,9 @@ export default function AdminPage() {
       <main className="container mx-auto px-4 py-16">
         <Card>
           <CardHeader>
-              <CardTitle>Loading...</CardTitle>
-            </CardHeader>
-          </Card>
-        </main>
+            <CardTitle>Loading...</CardTitle>
+          </CardHeader>
+        </Card>
       </main>
     );
   }

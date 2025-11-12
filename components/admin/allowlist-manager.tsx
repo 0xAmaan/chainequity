@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSendTransaction } from "thirdweb/react";
 import { prepareContractCall } from "thirdweb";
-import { gatedEquityContract } from "@/lib/frontend/contract";
+import { useContract } from "@/lib/frontend/contract-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,17 +12,23 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export const AllowlistManager = () => {
+  const { contractInstance } = useContract();
   const [address, setAddress] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
 
   const handleAddToAllowlist = () => {
+    if (!contractInstance) {
+      toast.error("Contract not loaded");
+      return;
+    }
+
     if (!address || !address.startsWith("0x")) {
       toast.error("Please enter a valid Ethereum address");
       return;
     }
 
     const transaction = prepareContractCall({
-      contract: gatedEquityContract,
+      contract: contractInstance,
       method: "function addToAllowlist(address account)",
       params: [address as `0x${string}`],
     });
@@ -50,13 +56,18 @@ export const AllowlistManager = () => {
   };
 
   const handleRemoveFromAllowlist = () => {
+    if (!contractInstance) {
+      toast.error("Contract not loaded");
+      return;
+    }
+
     if (!address || !address.startsWith("0x")) {
       toast.error("Please enter a valid Ethereum address");
       return;
     }
 
     const transaction = prepareContractCall({
-      contract: gatedEquityContract,
+      contract: contractInstance,
       method: "function removeFromAllowlist(address account)",
       params: [address as `0x${string}`],
     });

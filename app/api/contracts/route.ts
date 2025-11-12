@@ -12,8 +12,7 @@ export async function GET() {
         chain_id,
         name,
         symbol,
-        decimals,
-        deployer_address,
+        deployed_by,
         deployed_at,
         is_active
        FROM contracts
@@ -38,17 +37,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      contractAddress,
-      chainId,
-      name,
-      symbol,
-      decimals = 18,
-      deployerAddress,
-    } = body;
+    const { contractAddress, chainId, name, symbol, deployedBy } = body;
 
     // Validate required fields
-    if (!contractAddress || !chainId || !name || !symbol || !deployerAddress) {
+    if (!contractAddress || !chainId || !name || !symbol) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 },
@@ -57,12 +49,12 @@ export async function POST(request: NextRequest) {
 
     // Insert contract
     const result = await query(
-      `INSERT INTO contracts (contract_address, chain_id, name, symbol, decimals, deployer_address)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO contracts (contract_address, chain_id, name, symbol, deployed_by)
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (contract_address) DO UPDATE
        SET name = EXCLUDED.name, symbol = EXCLUDED.symbol
-       RETURNING id, contract_address, chain_id, name, symbol, decimals, deployer_address, deployed_at`,
-      [contractAddress, chainId, name, symbol, decimals, deployerAddress],
+       RETURNING id, contract_address, chain_id, name, symbol, deployed_by, deployed_at`,
+      [contractAddress, chainId, name, symbol, deployedBy || null],
     );
 
     // Initialize indexer state for this contract

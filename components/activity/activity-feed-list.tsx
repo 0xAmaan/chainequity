@@ -164,6 +164,19 @@ export const ActivityFeedList = ({ events }: ActivityFeedListProps) => {
     }
   };
 
+  if (events.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">No activity yet</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Activity will appear here once transactions occur on this contract
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {events.map((event, index) => (

@@ -13,13 +13,6 @@ export const NavbarContractInfo = ({ onOwnershipChange, onContractDataChange }: 
   const account = useActiveAccount();
   const { contractInstance, contractData, isLoading } = useContract();
 
-  // Pass contract data to parent when it changes
-  useEffect(() => {
-    if (contractData) {
-      onContractDataChange(contractData);
-    }
-  }, [contractData, onContractDataChange]);
-
   // Check ownership if we have a contract instance
   // Don't call the hook if contractInstance is null - use a minimal valid contract shape
   const dummyContract = contractInstance || {
@@ -34,6 +27,34 @@ export const NavbarContractInfo = ({ onOwnershipChange, onContractDataChange }: 
     params: [],
     queryOptions: { enabled: !!contractInstance && !isLoading },
   });
+
+  // Read live name and symbol from blockchain
+  const { data: name } = useReadContract({
+    contract: dummyContract as any,
+    method: "function name() view returns (string)",
+    params: [],
+    queryOptions: { enabled: !!contractInstance && !isLoading },
+  });
+
+  const { data: symbol } = useReadContract({
+    contract: dummyContract as any,
+    method: "function symbol() view returns (string)",
+    params: [],
+    queryOptions: { enabled: !!contractInstance && !isLoading },
+  });
+
+  // Pass live contract data to parent when it changes
+  useEffect(() => {
+    if (contractData && name && symbol) {
+      onContractDataChange({
+        ...contractData,
+        name,
+        symbol,
+      });
+    } else if (contractData) {
+      onContractDataChange(contractData);
+    }
+  }, [contractData, name, symbol, onContractDataChange]);
 
   // Calculate and pass ownership status to parent when it changes
   useEffect(() => {

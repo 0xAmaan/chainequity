@@ -126,7 +126,7 @@ export interface SharesBoughtBackEventData extends ContractEvent {
 export interface Config {
   rpcUrl: string;
   chainId: number;
-  contractAddress: Address;
+  contractAddress: Address | null;
   privateKey: Hash;
   database: {
     url: string;

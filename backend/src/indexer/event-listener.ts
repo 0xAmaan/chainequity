@@ -169,10 +169,7 @@ export class EventListener {
       }
 
       // Update indexer state
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(`✅ Processed Transfer event at block ${blockNumber}`);
     } catch (error) {
@@ -192,10 +189,7 @@ export class EventListener {
       logger.info(`✅ Address allowlisted: ${account} [Block: ${blockNumber}]`);
 
       await this.db.addToAllowlist(account, blockNumber, txHash);
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(`✅ Processed AddressAllowlisted event at block ${blockNumber}`);
     } catch (error) {
@@ -217,10 +211,7 @@ export class EventListener {
       );
 
       await this.db.removeFromAllowlist(account, blockNumber, txHash);
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(
         `✅ Processed AddressRemovedFromAllowlist event at block ${blockNumber}`,
@@ -261,10 +252,7 @@ export class EventListener {
       };
       await this.db.insertStockSplit(split);
 
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(`✅ Processed StockSplit event at block ${blockNumber}`);
     } catch (error) {
@@ -300,10 +288,7 @@ export class EventListener {
       };
       await this.db.insertMetadataChange(change);
 
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(`✅ Processed MetadataChanged event at block ${blockNumber}`);
     } catch (error) {
@@ -339,10 +324,7 @@ export class EventListener {
       };
       await this.db.insertBuyback(buyback);
 
-      await this.db.updateIndexerState(
-        blockNumber,
-        this.contract.getContractAddress(),
-      );
+      await this.db.updateIndexerState(blockNumber);
 
       logger.debug(`✅ Processed SharesBoughtBack event at block ${blockNumber}`);
     } catch (error) {

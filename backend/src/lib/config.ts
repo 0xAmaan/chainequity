@@ -15,7 +15,7 @@ export type { Config };
 export const loadConfig = (): Config => {
   const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
   const chainId = parseInt(process.env.CHAIN_ID || "31337");
-  const contractAddress = (process.env.CONTRACT_ADDRESS || "") as Address;
+  const contractAddress = (process.env.CONTRACT_ADDRESS || null) as Address | null;
   const privateKey = (process.env.PRIVATE_KEY || "") as Hash;
 
   const dbUrl = process.env.DATABASE_URL || "postgresql://localhost:5432/chain_equity";
@@ -56,21 +56,23 @@ export const loadConfig = (): Config => {
 /**
  * Validate that required configuration is present
  */
-export const validateConfig = (config: Config): void => {
+export const validateConfig = (
+  config: Config,
+  requireContractAddress = false,
+): void => {
   const errors: string[] = [];
 
   if (!config.rpcUrl) {
     errors.push("RPC_URL is required");
   }
 
-  if (!config.contractAddress || !process.env.CONTRACT_ADDRESS) {
+  if (
+    requireContractAddress &&
+    (!config.contractAddress || !process.env.CONTRACT_ADDRESS)
+  ) {
     errors.push(
       "CONTRACT_ADDRESS is required. Deploy the contract first or set it in .env",
     );
-  }
-
-  if (!config.privateKey || !process.env.PRIVATE_KEY) {
-    errors.push("PRIVATE_KEY is required for signing transactions");
   }
 
   if (!config.database.url) {
@@ -87,8 +89,8 @@ export const validateConfig = (config: Config): void => {
 /**
  * Get configuration with validation
  */
-export const getConfig = (): Config => {
+export const getConfig = (requireContractAddress = false): Config => {
   const config = loadConfig();
-  validateConfig(config);
+  validateConfig(config, requireContractAddress);
   return config;
 };

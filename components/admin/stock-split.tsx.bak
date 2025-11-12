@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSendTransaction, useReadContract } from "thirdweb/react";
 import { prepareContractCall } from "thirdweb";
-import { useContract } from "@/lib/frontend/contract-context";
+import { gatedEquityContract } from "@/lib/frontend/contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export const StockSplit = () => {
-  const { contractInstance, contractAddress } = useContract();
   const [multiplier, setMultiplier] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
 
@@ -21,21 +20,14 @@ export const StockSplit = () => {
   const [loadingHolders, setLoadingHolders] = useState(false);
 
   const fetchHolders = async () => {
-    if (!contractAddress) {
-      toast.error("Contract address not loaded");
-      return;
-    }
-
     setLoadingHolders(true);
     try {
-      const response = await fetch(`/api/captable?address=${contractAddress}`);
+      const response = await fetch("/api/captable");
       const data = await response.json();
       if (data.success) {
         const addresses = data.data.map((row: any) => row.address);
         setHolders(addresses);
         toast.success(`Fetched ${addresses.length} holders`);
-      } else {
-        toast.error(data.error || "Failed to fetch holders");
       }
     } catch (error) {
       console.error("Failed to fetch holders:", error);
@@ -46,11 +38,6 @@ export const StockSplit = () => {
   };
 
   const handleSplit = () => {
-    if (!contractInstance) {
-      toast.error("Contract not loaded");
-      return;
-    }
-
     if (!multiplier || isNaN(Number(multiplier)) || Number(multiplier) <= 1) {
       toast.error("Please enter a valid multiplier greater than 1 (e.g., 2 for 2-for-1 split)");
       return;
@@ -62,7 +49,7 @@ export const StockSplit = () => {
     }
 
     const transaction = prepareContractCall({
-      contract: contractInstance,
+      contract: gatedEquityContract,
       method: "function executeSplit(uint256 multiplier, address[] holders)",
       params: [BigInt(multiplier), holders as `0x${string}`[]],
     });

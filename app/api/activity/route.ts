@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Fetch metadata for events that need it
     const transformedData = await Promise.all(
       result.rows.map(async (row: any) => {
-        let metadata = null;
+        let metadata: any = null;
 
         // Fetch stock split metadata
         if (row.event_type === "stock_split") {

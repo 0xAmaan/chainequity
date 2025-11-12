@@ -84,15 +84,6 @@ export const Navbar = () => {
               </div>
             )}
 
-            {/* Deploy button on non-contract pages */}
-            {!isContractPage && pathname !== "/deploy" && (
-              <Link href="/deploy">
-                <Button variant="outline" size="sm">
-                  <Coins className="mr-2 h-4 w-4" />
-                  Deploy Token
-                </Button>
-              </Link>
-            )}
           </div>
           <div className="flex items-center gap-3">
             {isOwner && (

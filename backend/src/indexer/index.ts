@@ -1,27 +1,26 @@
 #!/usr/bin/env bun
 /**
- * ChainEquity Event Indexer Daemon
- * Listens to blockchain events and maintains cap table in PostgreSQL
+ * ChainEquity Multi-Contract Event Indexer
+ * Automatically watches ALL contracts in the database
  */
 import { getConfig } from "../lib/config";
-import { createContract } from "../lib/contract";
 import { Database } from "../lib/db";
 import { logger } from "../lib/logger";
-import { EventListener } from "./event-listener";
+import { ContractManager } from "./contract-manager";
+import { MultiContractListener } from "./multi-contract-listener";
 
-class Indexer {
-  private config = getConfig();
-  private contract = createContract(this.config);
+class MultiContractIndexer {
+  private config = getConfig(false); // Don't require CONTRACT_ADDRESS
   private db = new Database(this.config);
-  private eventListener = new EventListener(this.contract, this.db);
+  private contractManager = new ContractManager(this.config);
+  private eventListener = new MultiContractListener(this.contractManager, this.db);
   private isShuttingDown = false;
 
   /**
    * Initialize the indexer
    */
   async initialize(): Promise<void> {
-    logger.info("🚀 ChainEquity Indexer Starting...");
-    logger.info(`📍 Contract Address: ${this.config.contractAddress}`);
+    logger.info("🚀 ChainEquity Multi-Contract Indexer Starting...");
     logger.info(`🔗 RPC URL: ${this.config.rpcUrl}`);
     logger.info(`🗄️  Database: ${this.config.database.name}`);
 
@@ -33,39 +32,33 @@ class Indexer {
     }
     logger.info("✅ Database connection successful");
 
-    // Get current block number
-    const currentBlock = await this.contract.getBlockNumber();
-    logger.info(`📦 Current block: ${currentBlock}`);
+    // Load all contracts from database
+    logger.info("Loading contracts from database...");
+    await this.contractManager.loadContracts();
 
-    // Get indexer state
-    const state = await this.db.getIndexerState();
-    logger.info(`📊 Last processed block: ${state.last_processed_block}`);
-
-    // Sync historical events if needed
-    if (state.last_processed_block < currentBlock) {
-      const fromBlock = state.last_processed_block + BigInt(1);
-      logger.info(
-        `🔄 Syncing historical events from block ${fromBlock} to ${currentBlock}...`,
+    const addresses = this.contractManager.getContractAddresses();
+    if (addresses.length === 0) {
+      logger.warn(
+        "⚠️  No contracts found. Deploy a contract through the web UI to get started.",
       );
-      await this.eventListener.syncHistoricalEvents(fromBlock, currentBlock);
-    } else {
-      logger.info("✅ Indexer is up to date");
+      logger.warn(
+        "⚠️  The indexer will continue running and automatically detect new contracts.",
+      );
     }
 
-    // Get contract info
-    const name = await this.contract.name();
-    const symbol = await this.contract.symbol();
-    const totalSupply = await this.contract.totalSupply();
-
-    logger.info(`\n📋 Contract Info:`);
-    logger.info(`   Name: ${name}`);
-    logger.info(`   Symbol: ${symbol}`);
-    logger.info(`   Total Supply: ${totalSupply.toString()}`);
+    // Sync historical events for all contracts
+    logger.info("Syncing historical events...");
+    await this.eventListener.syncAllHistoricalEvents();
 
     // Start listening for new events
     await this.eventListener.start();
 
-    logger.info("\n✅ Indexer is running and listening for events...\n");
+    logger.info("\n✅ Multi-contract indexer is running and listening for events...");
+    logger.info("   - Automatically detects newly deployed contracts");
+    logger.info("   - Indexes all contracts in the database");
+    logger.info(
+      "   - Deploy contracts through the web UI and they'll be tracked automatically\n",
+    );
   }
 
   /**
@@ -125,38 +118,12 @@ class Indexer {
 
     logger.info("🛑 Closing database connection...");
     await this.db.close();
+    await this.contractManager.close();
 
     logger.info("✅ Shutdown complete");
-  }
-
-  /**
-   * Print current cap table
-   */
-  async printCapTable(): Promise<void> {
-    const capTable = await this.db.getCurrentCapTable();
-    const totalSupply = await this.db.getTotalSupply();
-
-    logger.info("\n📊 Current Cap Table:");
-    logger.info("═".repeat(80));
-
-    if (capTable.length === 0) {
-      logger.info("   No token holders yet");
-    } else {
-      capTable.forEach((entry, index) => {
-        logger.info(
-          `${index + 1}. ${entry.address} - ${entry.balance} tokens (${entry.ownership_percentage}%)`,
-        );
-        if (entry.is_allowlisted !== undefined) {
-          logger.info(`   Allowlisted: ${entry.is_allowlisted ? "✅" : "❌"}`);
-        }
-      });
-    }
-
-    logger.info("═".repeat(80));
-    logger.info(`Total Supply: ${totalSupply.toString()} tokens\n`);
   }
 }
 
 // Run the indexer
-const indexer = new Indexer();
+const indexer = new MultiContractIndexer();
 indexer.start();
