@@ -29,6 +29,7 @@ CREATE TABLE contracts (
     contract_address VARCHAR(42) NOT NULL UNIQUE,
     name TEXT NOT NULL,
     symbol VARCHAR(20) NOT NULL,
+    decimals INTEGER NOT NULL DEFAULT 18,
     chain_id INTEGER NOT NULL,
     deployed_at TIMESTAMP NOT NULL DEFAULT NOW(),
     deployed_by VARCHAR(42),
@@ -278,7 +279,7 @@ BEGIN
         'transfer'::TEXT as event_type,
         t.from_address as address1,
         t.to_address as address2,
-        t.amount as value,
+        t.amount::TEXT as value,
         t.block_number,
         t.block_timestamp,
         t.tx_hash
@@ -322,7 +323,7 @@ BEGIN
         'buyback'::TEXT as event_type,
         b.holder_address as address1,
         NULL::VARCHAR(42) as address2,
-        b.amount as value,
+        b.amount::TEXT as value,
         b.block_number,
         b.block_timestamp,
         b.tx_hash

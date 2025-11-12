@@ -73,7 +73,7 @@ contract GatedEquityToken is ERC20, Ownable {
     constructor(
         string memory name_,
         string memory symbol_
-    ) ERC20("", "") Ownable(msg.sender) {
+    ) ERC20(name_, symbol_) Ownable(msg.sender) {
         _tokenName = name_;
         _tokenSymbol = symbol_;
     }

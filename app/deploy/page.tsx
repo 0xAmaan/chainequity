@@ -72,7 +72,7 @@ export default function DeployPage() {
         chain: targetChain,
         account,
         abi: contractData.abi,
-        bytecode: contractData.bytecode,
+        bytecode: contractData.bytecode.object,
         constructorParams: {
           name_: tokenName,
           symbol_: tokenSymbol,

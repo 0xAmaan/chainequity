@@ -42,7 +42,9 @@ export class ContractManager {
 
     // Load ABI
     const abiPath = resolve(__dirname, "../lib/GatedEquityToken.abi.json");
-    this.abi = JSON.parse(readFileSync(abiPath, "utf-8"));
+    const abiFile = JSON.parse(readFileSync(abiPath, "utf-8"));
+    // Handle both old format (direct ABI array) and new format (forge output with abi property)
+    this.abi = Array.isArray(abiFile) ? abiFile : abiFile.abi;
   }
 
   /**

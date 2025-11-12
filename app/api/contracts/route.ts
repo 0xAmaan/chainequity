@@ -12,6 +12,7 @@ export async function GET() {
         chain_id,
         name,
         symbol,
+        decimals,
         deployed_by,
         deployed_at,
         is_active
@@ -37,7 +38,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { contractAddress, chainId, name, symbol, deployedBy } = body;
+    const { contractAddress, chainId, name, symbol, decimals = 18, deployedBy } = body;
 
     // Validate required fields
     if (!contractAddress || !chainId || !name || !symbol) {
@@ -49,12 +50,12 @@ export async function POST(request: NextRequest) {
 
     // Insert contract
     const result = await query(
-      `INSERT INTO contracts (contract_address, chain_id, name, symbol, deployed_by)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO contracts (contract_address, chain_id, name, symbol, decimals, deployed_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (contract_address) DO UPDATE
-       SET name = EXCLUDED.name, symbol = EXCLUDED.symbol
-       RETURNING id, contract_address, chain_id, name, symbol, deployed_by, deployed_at`,
-      [contractAddress, chainId, name, symbol, deployedBy || null],
+       SET name = EXCLUDED.name, symbol = EXCLUDED.symbol, decimals = EXCLUDED.decimals
+       RETURNING id, contract_address, chain_id, name, symbol, decimals, deployed_by, deployed_at`,
+      [contractAddress, chainId, name, symbol, decimals, deployedBy || null],
     );
 
     // Initialize indexer state for this contract

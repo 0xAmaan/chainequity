@@ -74,6 +74,7 @@ export class MultiContractListener {
     // Watch Transfer events
     const unwatchTransfer = instance.watchEvent.Transfer({
       onLogs: async (logs: any[]) => {
+        logger.info(`📨 Received ${logs.length} Transfer event(s)`);
         for (const log of logs) {
           await this.handleTransferEvent(log, contractId, address);
         }
@@ -468,6 +469,7 @@ export class MultiContractListener {
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(`Found ${transfers.length} Transfer events`);
       for (const log of transfers) {
         await this.handleTransferEvent(log, contractId, address);
       }
