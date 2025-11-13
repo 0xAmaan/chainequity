@@ -17,6 +17,7 @@ export class MultiContractListener {
   private db: Database;
   private unwatchFunctions: (() => void)[] = [];
   private refreshInterval: NodeJS.Timeout | null = null;
+  private watchedContracts: Set<string> = new Set(); // Track watched contracts
 
   constructor(contractManager: ContractManager, db: Database) {
     this.contractManager = contractManager;
@@ -33,25 +34,45 @@ export class MultiContractListener {
 
     if (addresses.length === 0) {
       logger.warn("⚠️  No contracts found to watch. Deploy a contract first.");
-      return;
-    }
-
-    for (const address of addresses) {
-      await this.watchContract(address);
-    }
-
-    // Start periodic refresh to detect new contracts
-    this.refreshInterval = setInterval(async () => {
-      const newCount = await this.contractManager.refreshContracts();
-      if (newCount > 0) {
-        logger.info(`🆕 Detected ${newCount} new contract(s)`);
-        // Watch the new contracts
-        const addresses = this.contractManager.getContractAddresses();
-        for (const address of addresses) {
-          await this.watchContract(address);
-        }
+    } else {
+      for (const address of addresses) {
+        await this.watchContract(address);
+        this.watchedContracts.add(address.toLowerCase());
       }
-    }, 10000); // Check every 10 seconds
+    }
+
+    // Watch blocks for new contract deployments
+    const client = this.contractManager.getClient();
+    logger.info("👁️  Watching blocks for new contracts...");
+
+    const unwatchBlocks = client.watchBlocks({
+      onBlock: async (block) => {
+        logger.info(`📦 New block ${block.number} detected by watchBlocks`);
+
+        // Check database for new contracts
+        const newAddresses = await this.contractManager.refreshContracts();
+        if (newAddresses.length > 0) {
+          logger.info(
+            `🆕 Block ${block.number}: Detected ${newAddresses.length} new contract(s)`,
+          );
+
+          // Watch only the new contracts
+          for (const address of newAddresses) {
+            const addressLower = address.toLowerCase();
+            if (!this.watchedContracts.has(addressLower)) {
+              await this.watchContract(address);
+              this.watchedContracts.add(addressLower);
+            }
+          }
+        }
+      },
+      onError: (error) => {
+        logger.error("Error watching blocks:", error);
+      },
+      pollingInterval: 1000, // Check every second (Anvil mines on-demand)
+    });
+
+    this.unwatchFunctions.push(unwatchBlocks);
 
     logger.info("✅ Multi-contract event listener started");
   }
@@ -68,14 +89,25 @@ export class MultiContractListener {
 
     const { instance, info } = contract;
     const contractId = info.id;
+    const client = this.contractManager.getClient();
 
     logger.info(`👁️  Watching contract: ${info.name} (${address})`);
 
-    // Watch Transfer events
-    const unwatchTransfer = instance.watchEvent.Transfer({
+    // Watch Transfer events - using client.watchContractEvent instead of instance.watchEvent
+    logger.info(`🔧 Setting up Transfer event watcher for ${address}`);
+    const unwatchTransfer = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "Transfer",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
-        logger.info(`📨 Received ${logs.length} Transfer event(s)`);
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} Transfer event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing Transfer: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleTransferEvent(log, contractId, address);
         }
       },
@@ -84,11 +116,23 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchTransfer);
+    logger.info(`✅ Transfer event watcher active for ${address}`);
 
     // Watch AddressAllowlisted events
-    const unwatchAllowlist = instance.watchEvent.AddressAllowlisted({
+    logger.info(`🔧 Setting up AddressAllowlisted event watcher for ${address}`);
+    const unwatchAllowlist = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "AddressAllowlisted",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} AddressAllowlisted event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing AddressAllowlisted: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleAllowlistAddEvent(log, contractId, address);
         }
       },
@@ -100,11 +144,25 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchAllowlist);
+    logger.info(`✅ AddressAllowlisted event watcher active for ${address}`);
 
     // Watch AddressRemovedFromAllowlist events
-    const unwatchRemoveAllowlist = instance.watchEvent.AddressRemovedFromAllowlist({
+    logger.info(
+      `🔧 Setting up AddressRemovedFromAllowlist event watcher for ${address}`,
+    );
+    const unwatchRemoveAllowlist = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "AddressRemovedFromAllowlist",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} AddressRemovedFromAllowlist event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing AddressRemovedFromAllowlist: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleAllowlistRemoveEvent(log, contractId, address);
         }
       },
@@ -116,11 +174,23 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchRemoveAllowlist);
+    logger.info(`✅ AddressRemovedFromAllowlist event watcher active for ${address}`);
 
     // Watch StockSplit events
-    const unwatchSplit = instance.watchEvent.StockSplit({
+    logger.info(`🔧 Setting up StockSplit event watcher for ${address}`);
+    const unwatchSplit = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "StockSplit",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} StockSplit event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing StockSplit: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleStockSplitEvent(log, contractId, address);
         }
       },
@@ -129,11 +199,23 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchSplit);
+    logger.info(`✅ StockSplit event watcher active for ${address}`);
 
     // Watch MetadataChanged events
-    const unwatchMetadata = instance.watchEvent.MetadataChanged({
+    logger.info(`🔧 Setting up MetadataChanged event watcher for ${address}`);
+    const unwatchMetadata = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "MetadataChanged",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} MetadataChanged event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing MetadataChanged: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleMetadataChangeEvent(log, contractId, address);
         }
       },
@@ -142,11 +224,23 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchMetadata);
+    logger.info(`✅ MetadataChanged event watcher active for ${address}`);
 
     // Watch SharesBoughtBack events
-    const unwatchBuyback = instance.watchEvent.SharesBoughtBack({
+    logger.info(`🔧 Setting up SharesBoughtBack event watcher for ${address}`);
+    const unwatchBuyback = client.watchContractEvent({
+      address: address as `0x${string}`,
+      abi: instance.abi,
+      eventName: "SharesBoughtBack",
+      pollingInterval: 1000,
       onLogs: async (logs: any[]) => {
+        logger.info(
+          `📨 [LIVE] Received ${logs.length} SharesBoughtBack event(s) for ${address.slice(0, 10)}...`,
+        );
         for (const log of logs) {
+          logger.info(
+            `📨 [LIVE] Processing SharesBoughtBack: block ${log.blockNumber}, tx ${log.transactionHash}`,
+          );
           await this.handleBuybackEvent(log, contractId, address);
         }
       },
@@ -155,6 +249,9 @@ export class MultiContractListener {
       },
     });
     this.unwatchFunctions.push(unwatchBuyback);
+    logger.info(`✅ SharesBoughtBack event watcher active for ${address}`);
+
+    logger.info(`🎉 All event watchers configured for ${address}`);
   }
 
   /**
@@ -465,62 +562,113 @@ export class MultiContractListener {
 
     try {
       // Fetch Transfer events
+      logger.info(
+        `🔍 [HISTORICAL] Querying Transfer events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const transfers = await instance.getEvents.Transfer({
         fromBlock,
         toBlock: currentBlock,
       });
-      logger.info(`Found ${transfers.length} Transfer events`);
+      logger.info(`📊 [HISTORICAL] Found ${transfers.length} Transfer event(s)`);
       for (const log of transfers) {
+        logger.info(
+          `📊 [HISTORICAL] Processing Transfer at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleTransferEvent(log, contractId, address);
       }
 
       // Fetch AddressAllowlisted events
+      logger.info(
+        `🔍 [HISTORICAL] Querying AddressAllowlisted events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const allowlists = await instance.getEvents.AddressAllowlisted({
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(
+        `📊 [HISTORICAL] Found ${allowlists.length} AddressAllowlisted event(s)`,
+      );
       for (const log of allowlists) {
+        logger.info(
+          `📊 [HISTORICAL] Processing AddressAllowlisted at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleAllowlistAddEvent(log, contractId, address);
       }
 
       // Fetch AddressRemovedFromAllowlist events
+      logger.info(
+        `🔍 [HISTORICAL] Querying AddressRemovedFromAllowlist events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const removeAllowlists = await instance.getEvents.AddressRemovedFromAllowlist({
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(
+        `📊 [HISTORICAL] Found ${removeAllowlists.length} AddressRemovedFromAllowlist event(s)`,
+      );
       for (const log of removeAllowlists) {
+        logger.info(
+          `📊 [HISTORICAL] Processing AddressRemovedFromAllowlist at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleAllowlistRemoveEvent(log, contractId, address);
       }
 
       // Fetch StockSplit events
+      logger.info(
+        `🔍 [HISTORICAL] Querying StockSplit events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const splits = await instance.getEvents.StockSplit({
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(`📊 [HISTORICAL] Found ${splits.length} StockSplit event(s)`);
       for (const log of splits) {
+        logger.info(
+          `📊 [HISTORICAL] Processing StockSplit at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleStockSplitEvent(log, contractId, address);
       }
 
       // Fetch MetadataChanged events
+      logger.info(
+        `🔍 [HISTORICAL] Querying MetadataChanged events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const metadataChanges = await instance.getEvents.MetadataChanged({
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(
+        `📊 [HISTORICAL] Found ${metadataChanges.length} MetadataChanged event(s)`,
+      );
       for (const log of metadataChanges) {
+        logger.info(
+          `📊 [HISTORICAL] Processing MetadataChanged at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleMetadataChangeEvent(log, contractId, address);
       }
 
       // Fetch SharesBoughtBack events
+      logger.info(
+        `🔍 [HISTORICAL] Querying SharesBoughtBack events for ${address} from block ${fromBlock} to ${currentBlock}`,
+      );
       const buybacks = await instance.getEvents.SharesBoughtBack({
         fromBlock,
         toBlock: currentBlock,
       });
+      logger.info(
+        `📊 [HISTORICAL] Found ${buybacks.length} SharesBoughtBack event(s)`,
+      );
       for (const log of buybacks) {
+        logger.info(
+          `📊 [HISTORICAL] Processing SharesBoughtBack at block ${log.blockNumber}, tx ${log.transactionHash}`,
+        );
         await this.handleBuybackEvent(log, contractId, address);
       }
 
+      // Update indexer state to current block (even if no events found)
+      await this.db.updateIndexerState(currentBlock);
       await this.db.setIndexerSyncing(false);
-      logger.info(`✅ ${info.name} synced successfully`);
+      logger.info(`✅ ${info.name} synced successfully to block ${currentBlock}`);
     } catch (error) {
       await this.db.setIndexerSyncing(false);
       logger.error(`Error syncing ${info.name}:`, error);

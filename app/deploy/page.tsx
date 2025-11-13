@@ -102,12 +102,48 @@ export default function DeployPage() {
           console.error("Failed to save contract to database:", data.error);
           toast.warning("Contract deployed but failed to save to registry");
         } else {
-          toast.success("Token deployed successfully! Redirecting to dashboard...");
+          toast.success("Token deployed successfully! Waiting for indexer...");
 
-          // Auto-navigate to the new contract after 2 seconds
-          setTimeout(() => {
-            router.push(`/contracts/${contractAddress}/home`);
-          }, 2000);
+          // Trigger indexer reload
+          await fetch("/api/indexer/reload", { method: "POST" });
+
+          // Poll indexer status until ready
+          const checkIndexerReady = async (attempt = 1): Promise<void> => {
+            try {
+              const statusResponse = await fetch(
+                `/api/indexer/status?address=${contractAddress}`
+              );
+              const statusData = await statusResponse.json();
+
+              if (statusData.ready) {
+                toast.success("Indexer ready! Redirecting to dashboard...");
+                router.push(`/contracts/${contractAddress}/home`);
+              } else {
+                // Retry after 1 second, max 15 attempts (15 seconds total)
+                if (attempt < 15) {
+                  setTimeout(() => checkIndexerReady(attempt + 1), 1000);
+                } else {
+                  toast.warning(
+                    "Indexer is taking longer than expected. Redirecting anyway..."
+                  );
+                  router.push(`/contracts/${contractAddress}/home`);
+                }
+              }
+            } catch (error) {
+              console.error("Error checking indexer status:", error);
+              // If status check fails, keep retrying up to 15 attempts
+              if (attempt >= 15) {
+                toast.warning(
+                  "Unable to verify indexer status. Redirecting to dashboard..."
+                );
+                router.push(`/contracts/${contractAddress}/home`);
+              } else {
+                setTimeout(() => checkIndexerReady(attempt + 1), 1000);
+              }
+            }
+          };
+
+          checkIndexerReady();
         }
       } catch (dbError) {
         console.error("Database save error:", dbError);

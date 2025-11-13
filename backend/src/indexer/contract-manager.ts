@@ -25,10 +25,11 @@ export class ContractManager {
   private contracts: Map<string, { info: ContractInfo; instance: any }> = new Map();
 
   constructor(config: Config) {
-    // Create blockchain client
+    // Create blockchain client with polling interval for event watching
     this.client = createPublicClient({
       chain: foundry,
       transport: http(config.rpcUrl),
+      pollingInterval: 1000, // Poll every second for events
     });
 
     // Create database connection
@@ -114,13 +115,14 @@ export class ContractManager {
 
   /**
    * Check for newly deployed contracts and add them
+   * Returns array of new contract addresses
    */
-  async refreshContracts(): Promise<number> {
+  async refreshContracts(): Promise<string[]> {
     const result = await this.pool.query(
       "SELECT id, contract_address, name, symbol, chain_id FROM contracts WHERE is_active = TRUE ORDER BY id",
     );
 
-    let newContracts = 0;
+    const newAddresses: string[] = [];
 
     for (const row of result.rows) {
       const address = row.contract_address.toLowerCase();
@@ -148,11 +150,11 @@ export class ContractManager {
         logger.info(
           `📋 Added new contract: ${contractInfo.name} (${contractInfo.symbol}) at ${contractInfo.address}`,
         );
-        newContracts++;
+        newAddresses.push(contractInfo.address);
       }
     }
 
-    return newContracts;
+    return newAddresses;
   }
 
   /**
