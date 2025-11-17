@@ -135,13 +135,16 @@ export const ActivityFeedList = ({ events }: ActivityFeedListProps) => {
   };
 
   const getExplorerUrl = (txHash: string) => {
-    // TODO: Update this based on your chain
-    // For localhost/Anvil, there's no explorer
-    // For Arbitrum Sepolia: https://sepolia.arbiscan.io/tx/${txHash}
     const chainId = process.env.NEXT_PUBLIC_CHAIN_ID;
+    if (chainId === "84532") {
+      // Base Sepolia
+      return `https://sepolia.basescan.org/tx/${txHash}`;
+    }
     if (chainId === "421614") {
+      // Arbitrum Sepolia
       return `https://sepolia.arbiscan.io/tx/${txHash}`;
     }
+    // For localhost/Anvil, there's no explorer
     return null;
   };
 

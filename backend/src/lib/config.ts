@@ -4,6 +4,7 @@
 
 import type { Config } from "../types";
 import type { Address, Hash } from "viem";
+import { baseSepolia, foundry, type Chain } from "viem/chains";
 
 export type { Config };
 
@@ -77,4 +78,20 @@ export const getConfig = (requireContractAddress = false): Config => {
   const config = loadConfig();
   validateConfig(config, requireContractAddress);
   return config;
+};
+
+/**
+ * Get the appropriate viem chain object based on chain ID
+ */
+export const getChain = (chainId: number): Chain => {
+  switch (chainId) {
+    case 31337: // Anvil/Foundry local
+      return foundry;
+    case 84532: // Base Sepolia
+      return baseSepolia;
+    default:
+      throw new Error(
+        `Unsupported chain ID: ${chainId}. Supported chains: 31337 (Anvil), 84532 (Base Sepolia)`,
+      );
+  }
 };

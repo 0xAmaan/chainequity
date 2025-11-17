@@ -5,11 +5,11 @@
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { getChain } from "../lib/config";
 import { convexIndexer } from "../lib/convex-client";
 import { logger } from "../lib/logger";
 import type { Config } from "../types";
 import { createPublicClient, getContract, http, type PublicClient } from "viem";
-import { foundry } from "viem/chains";
 
 interface ContractInfo {
   id: string; // Convex ID (not Postgres number)
@@ -26,10 +26,11 @@ export class ContractManager {
 
   constructor(config: Config) {
     // Create blockchain client with polling interval for event watching
+    const chain = getChain(config.chainId);
     this.client = createPublicClient({
-      chain: foundry,
+      chain,
       transport: http(config.rpcUrl),
-      pollingInterval: 1000, // Poll every second for events
+      pollingInterval: config.indexer.pollInterval,
     });
 
     // Load ABI

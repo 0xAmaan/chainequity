@@ -47,16 +47,106 @@ export const getStats = query({
 
     const latestBlock = indexerState ? indexerState.lastProcessedBlock : "0";
 
-    // Get recent activity (last 10 events)
+    // Get recent activity count (all event types in last 24 hours)
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+    const allEvents: Array<{ timestamp: Date }> = [];
+
+    // Fetch transfers from last 24 hours
     const transfers = await ctx.db
       .query("transfers")
       .withIndex("by_contract_and_timestamp", (q) =>
         q.eq("contractId", args.contractId),
       )
       .order("desc")
-      .take(10);
+      .take(100); // Take more to filter by time
 
-    const recentActivity = transfers.map((t) => ({
+    transfers.forEach((t) => {
+      const timestamp = new Date(t.blockTimestamp).getTime();
+      if (timestamp >= twentyFourHoursAgo) {
+        allEvents.push({ timestamp: new Date(t.blockTimestamp) });
+      }
+    });
+
+    // Fetch stock splits from last 24 hours
+    const stockSplits = await ctx.db
+      .query("stockSplits")
+      .withIndex("by_contract_and_block", (q) => q.eq("contractId", args.contractId))
+      .order("desc")
+      .take(100);
+
+    stockSplits.forEach((s) => {
+      const timestamp = new Date(s.blockTimestamp).getTime();
+      if (timestamp >= twentyFourHoursAgo) {
+        allEvents.push({ timestamp: new Date(s.blockTimestamp) });
+      }
+    });
+
+    // Fetch buybacks from last 24 hours
+    const buybacks = await ctx.db
+      .query("buybacks")
+      .withIndex("by_contract_and_block", (q) => q.eq("contractId", args.contractId))
+      .order("desc")
+      .take(100);
+
+    buybacks.forEach((b) => {
+      const timestamp = new Date(b.blockTimestamp).getTime();
+      if (timestamp >= twentyFourHoursAgo) {
+        allEvents.push({ timestamp: new Date(b.blockTimestamp) });
+      }
+    });
+
+    // Fetch metadata changes from last 24 hours
+    const metadataChanges = await ctx.db
+      .query("metadataChanges")
+      .withIndex("by_contract_and_block", (q) => q.eq("contractId", args.contractId))
+      .order("desc")
+      .take(100);
+
+    metadataChanges.forEach((m) => {
+      const timestamp = new Date(m.blockTimestamp).getTime();
+      if (timestamp >= twentyFourHoursAgo) {
+        allEvents.push({ timestamp: new Date(m.blockTimestamp) });
+      }
+    });
+
+    // Fetch allowlist additions from last 24 hours
+    const allowlistAdditions = await ctx.db
+      .query("allowlist")
+      .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
+      .filter((q) => q.eq(q.field("isAllowlisted"), true))
+      .take(100);
+
+    allowlistAdditions.forEach((a) => {
+      if (a.addedAt) {
+        const timestamp = new Date(a.addedAt).getTime();
+        if (timestamp >= twentyFourHoursAgo) {
+          allEvents.push({ timestamp: new Date(a.addedAt) });
+        }
+      }
+    });
+
+    // Fetch allowlist removals from last 24 hours
+    const allowlistRemovals = await ctx.db
+      .query("allowlist")
+      .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
+      .filter((q) => q.eq(q.field("isAllowlisted"), false))
+      .take(100);
+
+    allowlistRemovals.forEach((a) => {
+      if (a.removedAt) {
+        const timestamp = new Date(a.removedAt).getTime();
+        if (timestamp >= twentyFourHoursAgo) {
+          allEvents.push({ timestamp: new Date(a.removedAt) });
+        }
+      }
+    });
+
+    const recentActivityCount = allEvents.length;
+
+    // Get recent activity (last 10 events) for backward compatibility
+    const recentTransfers = transfers.slice(0, 10);
+    const recentActivity = recentTransfers.map((t) => ({
       eventType: "transfer",
       fromAddress: t.fromAddress,
       toAddress: t.toAddress,
@@ -71,7 +161,7 @@ export const getStats = query({
       total_holders: totalHolders,
       top_holder_percentage: topHolderPercentage.toString(),
       latest_block: latestBlock,
-      recent_activity_count: transfers.length,
+      recent_activity_count: recentActivityCount,
       recent_activity: recentActivity,
     };
   },

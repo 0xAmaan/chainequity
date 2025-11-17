@@ -13,14 +13,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Rocket, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import { deployContract } from "thirdweb/deploys";
 import { client } from "@/lib/frontend/client";
-import { arbitrumSepolia, localhost } from "@/lib/frontend/chains";
+import { baseSepolia, localhost } from "@/lib/frontend/chains";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import contractData from "@/lib/GatedEquityToken.abi.json";
 
 // Determine which chain to use based on environment
 const isDevelopment = process.env.NODE_ENV === "development";
-const targetChain = isDevelopment ? localhost : arbitrumSepolia;
+const targetChain = isDevelopment ? localhost : baseSepolia;
 
 export default function DeployPage() {
   const router = useRouter();

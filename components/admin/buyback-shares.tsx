@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { useSendTransaction } from "thirdweb/react";
-import { prepareContractCall } from "thirdweb";
+import { prepareContractCall, waitForReceipt } from "thirdweb";
 import { useContract } from "@/lib/frontend/contract-context";
+import { useIndexEvents } from "@/lib/frontend/index-events";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { client } from "@/lib/frontend/client";
 
 export const BuybackShares = () => {
   const { contractInstance } = useContract();
+  const { indexTransferEvents } = useIndexEvents();
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -42,23 +45,42 @@ export const BuybackShares = () => {
     });
 
     toast.promise(
-      new Promise((resolve, reject) => {
-        sendTransaction(transaction, {
-          onSuccess: (result) => {
-            console.log("Transaction sent:", result.transactionHash);
+      new Promise(async (resolve, reject) => {
+        try {
+          const result = await new Promise<any>((resolveTx, rejectTx) => {
+            sendTransaction(transaction, {
+              onSuccess: resolveTx,
+              onError: rejectTx,
+            });
+          });
+
+          console.log("Transaction sent:", result.transactionHash);
+
+          // Wait for confirmation and index events (buyback emits Transfer events)
+          const receipt = await waitForReceipt(client, result);
+
+          if (receipt.status === "success") {
+            try {
+              await indexTransferEvents(result.transactionHash as `0x${string}`);
+              console.log("✅ Buyback events indexed immediately to Convex");
+            } catch (indexError) {
+              console.warn("Failed to index events immediately:", indexError);
+            }
+
             setAddress("");
             setAmount("");
             resolve(result);
-          },
-          onError: (error) => {
-            console.error("Transaction failed:", error);
-            reject(error);
-          },
-        });
+          } else {
+            reject(new Error("Transaction failed"));
+          }
+        } catch (error: any) {
+          console.error("Transaction failed:", error);
+          reject(error);
+        }
       }),
       {
         loading: `Buying back ${amount} tokens...`,
-        success: (result: any) => `Bought back ${amount} tokens! Tx: ${result.transactionHash.slice(0, 10)}...`,
+        success: (result: any) => `Bought back ${amount} tokens!`,
         error: (error: any) => `Transaction failed: ${error.message}`,
       }
     );

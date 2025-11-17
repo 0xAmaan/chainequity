@@ -1,5 +1,24 @@
 import { defineChain } from "thirdweb";
 
+// Base Sepolia Testnet
+export const baseSepolia = defineChain({
+  id: 84532,
+  name: "Base Sepolia",
+  rpc: "https://sepolia.base.org",
+  nativeCurrency: {
+    name: "Ether",
+    symbol: "ETH",
+    decimals: 18,
+  },
+  blockExplorers: [
+    {
+      name: "Basescan",
+      url: "https://sepolia.basescan.org",
+    },
+  ],
+  testnet: true,
+});
+
 // Arbitrum Sepolia Testnet
 export const arbitrumSepolia = defineChain({
   id: 421614,
@@ -19,7 +38,7 @@ export const arbitrumSepolia = defineChain({
   testnet: true,
 });
 
-// You can also add localhost for development
+// Localhost for development
 export const localhost = defineChain({
   id: 31337,
   name: "Localhost",
