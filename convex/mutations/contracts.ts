@@ -51,6 +51,23 @@ export const upsert = mutation({
 });
 
 /**
+ * Update contract metadata (name and symbol)
+ */
+export const updateMetadata = mutation({
+  args: {
+    contractId: v.id("contracts"),
+    name: v.string(),
+    symbol: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.contractId, {
+      name: args.name,
+      symbol: args.symbol,
+    });
+  },
+});
+
+/**
  * Deactivate a contract (soft delete)
  */
 export const deactivate = mutation({

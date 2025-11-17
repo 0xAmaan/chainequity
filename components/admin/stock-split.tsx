@@ -18,7 +18,7 @@ import { getChainById } from "@/lib/frontend/contract";
 
 export const StockSplit = () => {
   const { contractInstance, contractAddress, contractData } = useContract();
-  const { indexTransferEvents } = useIndexEvents();
+  const { indexTransferEvents, indexStockSplitEvents } = useIndexEvents();
   const [multiplier, setMultiplier] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
 
@@ -87,7 +87,11 @@ export const StockSplit = () => {
 
           if (receipt.status === "success") {
             try {
-              await indexTransferEvents(result.transactionHash as `0x${string}`);
+              // Index both Transfer events (for balance updates) and StockSplit event
+              await Promise.all([
+                indexTransferEvents(result.transactionHash as `0x${string}`),
+                indexStockSplitEvents(result.transactionHash as `0x${string}`),
+              ]);
               console.log("✅ Stock split events indexed immediately to Convex");
             } catch (indexError) {
               console.warn("Failed to index events immediately:", indexError);

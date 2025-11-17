@@ -18,9 +18,9 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import contractData from "@/lib/GatedEquityToken.abi.json";
 
-// Determine which chain to use based on environment
-const isDevelopment = process.env.NODE_ENV === "development";
-const targetChain = isDevelopment ? localhost : baseSepolia;
+// Use Base Sepolia for deployments
+// (To use Anvil local, manually change this to: localhost)
+const targetChain = baseSepolia;
 
 export default function DeployPage() {
   const router = useRouter();
@@ -119,7 +119,7 @@ export default function DeployPage() {
       if (error?.message?.includes("insufficient funds")) {
         errorMessage = "Insufficient funds for gas. Please add testnet ETH to your wallet.";
       } else if (error?.message?.includes("Internal JSON-RPC error")) {
-        errorMessage = `Transaction failed. Please check you have enough ${isDevelopment ? 'ETH' : 'testnet ETH'} for gas and are connected to ${targetChain.name}.`;
+        errorMessage = `Transaction failed. Please check you have enough testnet ETH for gas and are connected to ${targetChain.name}.`;
       } else if (error?.message) {
         errorMessage = error.message;
       }
@@ -235,16 +235,14 @@ export default function DeployPage() {
                         <div className="space-y-1">
                           <p className="font-semibold">Token deployed successfully!</p>
                           <p className="text-xs font-mono break-all">{deployedAddress}</p>
-                          {!isDevelopment && (
-                            <a
-                              href={`https://sepolia.basescan.org/address/${deployedAddress}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs underline hover:text-green-200"
-                            >
-                              View on Basescan
-                            </a>
-                          )}
+                          <a
+                            href={`https://sepolia.basescan.org/address/${deployedAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs underline hover:text-green-200"
+                          >
+                            View on Basescan
+                          </a>
                         </div>
                       </AlertDescription>
                     </Alert>
@@ -293,7 +291,7 @@ export default function DeployPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>• This deploys to {targetChain.name} {targetChain.testnet ? 'testnet' : ''} - {isDevelopment ? 'use local Anvil chain' : 'use testnet ETH for gas fees'}</p>
+                  <p>• This deploys to {targetChain.name} {targetChain.testnet ? 'testnet' : ''} - use testnet ETH for gas fees</p>
                   <p>• The contract includes transfer restrictions (allowlist gating) for compliance</p>
                 </div>
                 <p className="text-yellow-400 font-medium text-sm pt-1">

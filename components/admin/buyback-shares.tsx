@@ -16,7 +16,7 @@ import { getChainById } from "@/lib/frontend/contract";
 
 export const BuybackShares = () => {
   const { contractInstance, contractData } = useContract();
-  const { indexTransferEvents } = useIndexEvents();
+  const { indexTransferEvents, indexBuybackEvents } = useIndexEvents();
   const [address, setAddress] = useState("");
   const [amount, setAmount] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -69,7 +69,11 @@ export const BuybackShares = () => {
 
           if (receipt.status === "success") {
             try {
-              await indexTransferEvents(result.transactionHash as `0x${string}`);
+              // Index both Transfer events (for balance updates) and SharesBoughtBack event
+              await Promise.all([
+                indexTransferEvents(result.transactionHash as `0x${string}`),
+                indexBuybackEvents(result.transactionHash as `0x${string}`),
+              ]);
               console.log("✅ Buyback events indexed immediately to Convex");
             } catch (indexError) {
               console.warn("Failed to index events immediately:", indexError);

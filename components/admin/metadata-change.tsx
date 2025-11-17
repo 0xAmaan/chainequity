@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSendTransaction } from "thirdweb/react";
 import { prepareContractCall, waitForReceipt } from "thirdweb";
 import { useContract } from "@/lib/frontend/contract-context";
+import { useIndexEvents } from "@/lib/frontend/index-events";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ import { getChainById } from "@/lib/frontend/contract";
 
 export const MetadataChange = () => {
   const { contractInstance, contractData } = useContract();
+  const { indexMetadataEvents } = useIndexEvents();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -64,9 +66,13 @@ export const MetadataChange = () => {
           });
 
           if (receipt.status === "success") {
-            // Note: Metadata changes don't emit events that need indexing
-            // The contract state is updated directly
-            console.log("✅ Metadata changed on-chain");
+            try {
+              // Index MetadataChanged event and update contract in Convex
+              await indexMetadataEvents(result.transactionHash as `0x${string}`);
+              console.log("✅ Metadata changed on-chain and indexed to Convex");
+            } catch (indexError) {
+              console.warn("Failed to index metadata events:", indexError);
+            }
 
             setName("");
             setSymbol("");
