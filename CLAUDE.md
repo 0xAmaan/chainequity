@@ -35,11 +35,23 @@ bun run start
 
 ### Backend Services
 ```bash
-# Run the multi-contract indexer
-bun run indexer
-
 # Run CLI tool for contract management
 bun run cli
+
+# Available CLI commands (see CLI Command Reference section for details)
+bun run cli info                              # Contract info
+bun run cli status [address]                  # Check allowlist status
+bun run cli approve <address>                 # Add to allowlist
+bun run cli revoke <address>                  # Remove from allowlist
+bun run cli mint <address> <amount>           # Mint tokens
+bun run cli captable                          # View cap table
+bun run cli split <multiplier>                # Execute stock split
+bun run cli buyback <address> <amount>        # Buy back shares
+bun run cli metadata <name> <symbol>          # Change token metadata
+
+# Utility scripts (run directly with bun)
+bun backend/src/scripts/sync-contracts-to-convex.ts           # Sync contracts to Convex
+bun backend/src/scripts/register-base-sepolia-contract.ts     # Register Base Sepolia contract
 ```
 
 ### Smart Contract Development
@@ -76,18 +88,19 @@ anvil --port 8545
   - Admin-only operations: minting, allowlist management
   - Transfer validation: both sender and recipient must be allowlisted
 
-### Backend Indexer (`backend/src/`)
-**Multi-Contract Architecture**: The indexer watches ALL contracts from Convex automatically, not a single hardcoded address.
+### Backend CLI (`backend/src/`)
+The backend provides a CLI tool for interacting with deployed contracts directly via RPC.
 
 #### Key Components:
-- **indexer/index.ts** - Main entry point for multi-contract indexer
-- **indexer/contract-manager.ts** - Manages multiple contract instances, loads from Convex
-- **indexer/multi-contract-listener.ts** - Watches events across all contracts
+- **cli/index.ts** - Main CLI entry point using Commander.js
+- **cli/commands/transactions.ts** - Transaction commands (approve, revoke, mint, buyback, split, metadata)
+- **cli/commands/queries.ts** - Query commands (info, status, captable)
+- **lib/contract.ts** - Contract interaction utilities using viem
 - **lib/config.ts** - Configuration loader (supports Anvil local + Base Sepolia)
-- **lib/convex-client.ts** - Convex database client for data storage
-- **cli/index.ts** - Command-line interface for admin operations
+- **lib/convex-client.ts** - Convex database client
+- **scripts/** - Utility scripts for contract management
 
-#### Supported Events:
+#### Contract Events (indexed to Convex via frontend):
 - `Transfer` - ERC20 token transfers
 - `AddressAllowlisted` - Address added to allowlist
 - `AddressRemovedFromAllowlist` - Address removed from allowlist
@@ -143,18 +156,13 @@ anvil --port 8545
 RPC_URL=http://127.0.0.1:8545  # Anvil local OR https://sepolia.base.org
 CHAIN_ID=31337  # 31337=Anvil, 84532=Base Sepolia
 
-# Not required for indexer (loads from Convex)
-CONTRACT_ADDRESS=
+# Contract Configuration (for CLI operations)
+CONTRACT_ADDRESS=  # Optional: Can be specified via -c flag
 
 # Admin wallet for CLI operations
-PRIVATE_KEY=
+PRIVATE_KEY=  # Required for transaction commands
 
-# Indexer Configuration
-INDEXER_START_BLOCK=0
-INDEXER_POLL_INTERVAL=1000  # ms - use 1000 for Anvil, 2000-5000 for Base Sepolia
-INDEXER_BATCH_SIZE=1000
-
-# Logging
+# Logging (optional)
 LOG_LEVEL=info
 ```
 
@@ -182,18 +190,18 @@ Configured for:
 3. Configure `.env` and `.env.local` files
 4. Start Anvil: `anvil --port 8545`
 5. Deploy contract: Use forge script (see commands above)
-6. Start indexer: `bun run indexer`
-7. Start frontend: `bun run dev`
+6. Start frontend: `bun run dev` (runs Next.js + Convex concurrently)
+7. Use CLI for admin operations: `bun run cli <command>`
 
 ### Adding New Features
 
 #### Adding Contract Events
 1. Update `src/GatedEquityToken.sol` with new event
-2. Update `backend/src/indexer/event-processor.ts` to handle event
-3. Update `convex/schema.ts` if new table needed
-4. Update `convex/mutations/` with new mutation functions
+2. Update `convex/schema.ts` if new table needed
+3. Update frontend event listening logic (typically in page components or hooks)
+4. Update `convex/mutations/` with new mutation functions for storing event data
 5. Recompile: `forge build`
-6. Update ABI: `backend/src/lib/GatedEquityToken.abi.json`
+6. Update ABI: `backend/src/lib/GatedEquityToken.abi.json` (if using CLI with new functions)
 
 #### Adding Frontend Features
 1. Create component in `components/`
@@ -233,17 +241,17 @@ Configured for:
 - Ownership percentages remain unchanged
 - Emits `StockSplit` event with new total supply
 
-### Multi-Contract Indexing
-- Indexer automatically detects contracts from Convex
-- No need to restart indexer when new contract deployed
-- Each contract has separate indexer state
-- Periodic refresh checks for new contracts
+### Event Indexing Architecture
+- Events are indexed to Convex via frontend real-time listeners (not a separate indexer process)
+- Each contract registered in Convex can be monitored independently
+- Frontend components subscribe to Convex queries for real-time updates
+- Historical data can be queried by block number for point-in-time cap tables
 
 ### Data Consistency
-- Indexer maintains per-contract `indexerState` with `lastProcessedBlock`
-- On startup, syncs historical events from `lastProcessedBlock` to current
-- Real-time listening continues after sync complete
-- Balances derived from Transfer events (no on-chain balance queries)
+- Convex maintains per-contract `indexerState` with `lastProcessedBlock`
+- Event data stored includes block numbers and timestamps for historical queries
+- Balances derived from Transfer events stored in Convex
+- CLI operations interact directly with blockchain via RPC (read contract state on-demand)
 
 ## Testing
 
@@ -306,14 +314,40 @@ const contract = getContract({
 const name = await contract.read.name();
 ```
 
+## CLI Command Reference
+
+All CLI commands support optional flags:
+- `-r, --rpc <url>` - Override RPC URL (default from `.env`)
+- `-c, --contract <address>` - Override contract address (default from `.env`)
+- `-k, --private-key <key>` - Override private key for transactions (default from `.env`)
+
+### Query Commands (Read-Only)
+```bash
+bun run cli info                    # Display contract information
+bun run cli status [address]        # Check allowlist status and balance
+bun run cli captable                # View current cap table
+bun run cli captable -b 12345       # Historical cap table at block
+bun run cli captable -f json        # Output format: table, json, csv
+```
+
+### Transaction Commands (Require Private Key)
+```bash
+bun run cli approve <address>           # Add to allowlist
+bun run cli revoke <address>            # Remove from allowlist
+bun run cli mint <address> <amount>     # Mint tokens
+bun run cli buyback <address> <amount>  # Buy back shares (burns)
+bun run cli split <multiplier>          # Stock split (e.g., 2 = 2-for-1)
+bun run cli metadata <name> <symbol>    # Change token metadata
+```
+
 ## Migration Notes
 
 **PostgreSQL → Convex Migration (Completed)**
 - All database queries migrated to Convex
-- Indexer now uses Convex mutations instead of SQL
+- Event indexing happens in frontend (no separate indexer process)
 - Frontend uses Convex real-time subscriptions
-- CLI operations unchanged (still interact with blockchain directly)
-- Old PostgreSQL references in code have been removed
+- CLI operations interact directly with blockchain via RPC
+- Old PostgreSQL references removed from codebase
 
 ## Disclaimers
 

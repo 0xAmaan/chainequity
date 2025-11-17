@@ -14,9 +14,9 @@ Tokenized cap table management with gated token transfers. Deploy equity tokens 
 ## Stack
 
 - **Contracts**: Solidity + Foundry
-- **Backend**: Bun + TypeScript (event indexer)
+- **Backend**: Bun + TypeScript (CLI tools)
 - **Frontend**: Next.js 16 + React 19 + Tailwind
-- **Database**: Convex (real-time)
+- **Database**: Convex (real-time event indexing)
 - **Web3**: thirdweb + viem
 
 ## Quick Start
@@ -72,9 +72,10 @@ anvil --port 8545    # Local blockchain
 │  Token (ERC20)  │
 └────────┬────────┘
          │
+         │ Events indexed via frontend listeners
          ↓
 ┌─────────────────┐
-│     Convex      │  Real-time database
+│     Convex      │  Real-time database (indexed events)
 │    Database     │
 └────────┬────────┘
          │
@@ -82,6 +83,8 @@ anvil --port 8545    # Local blockchain
 ┌─────────────────┐
 │   Next.js UI    │  Dashboard, admin operations, cap table
 └─────────────────┘
+
+Backend CLI ──────► Blockchain (direct RPC interaction)
 ```
 
 ## Contract Features
@@ -116,7 +119,9 @@ chain-equity/
 ├── test/                       # Contract tests
 ├── backend/src/                # TypeScript backend
 │   ├── cli/                   # Admin CLI
-│   └── lib/                   # Shared utilities
+│   ├── lib/                   # Shared utilities
+│   ├── scripts/               # Utility scripts
+│   └── types/                 # Type definitions
 ├── app/                        # Next.js pages
 ├── components/                 # React components
 ├── convex/                     # Convex schema + queries
@@ -140,29 +145,48 @@ forge test -vvv
 
 ## CLI Usage
 
+All commands support optional flags: `-r <rpc-url>`, `-c <contract-address>`, `-k <private-key>`
+
+### Query Commands (Read-Only)
 ```bash
-bun run cli info                              # Contract info
-bun run cli approve <address>                 # Add to allowlist
-bun run cli mint <address> <amount>           # Mint tokens
-bun run cli captable                          # View cap table
-bun run cli split <multiplier>                # Execute stock split
-bun run cli buyback <address> <amount>        # Buy back shares
-bun run cli metadata <name> <symbol>          # Change token metadata
+bun run cli info                    # Display contract information
+bun run cli status [address]        # Check allowlist status and balance
+bun run cli captable                # View current cap table
+bun run cli captable -b 12345       # Historical cap table at block
+bun run cli captable -f json        # Output format: table, json, csv
+```
+
+### Transaction Commands (Require Private Key)
+```bash
+bun run cli approve <address>           # Add to allowlist
+bun run cli revoke <address>            # Remove from allowlist
+bun run cli mint <address> <amount>     # Mint tokens
+bun run cli buyback <address> <amount>  # Buy back shares (burns)
+bun run cli split <multiplier>          # Stock split (e.g., 2 = 2-for-1)
+bun run cli metadata <name> <symbol>    # Change token metadata
+```
+
+### Utility Scripts
+```bash
+bun backend/src/scripts/sync-contracts-to-convex.ts           # Sync contracts to Convex
+bun backend/src/scripts/register-base-sepolia-contract.ts     # Register Base Sepolia contract
 ```
 
 ## Environment Variables
 
 **Backend** (`.env`):
 ```bash
-RPC_URL=http://127.0.0.1:8545
-CHAIN_ID=31337
-PRIVATE_KEY=your_private_key
-INDEXER_POLL_INTERVAL=1000
+RPC_URL=http://127.0.0.1:8545           # Anvil local or https://sepolia.base.org
+CHAIN_ID=31337                          # 31337=Anvil, 84532=Base Sepolia
+CONTRACT_ADDRESS=                       # Optional: can be specified via -c flag
+PRIVATE_KEY=your_private_key            # Required for transaction commands
+LOG_LEVEL=info                          # Optional: info, debug, error
 ```
 
 **Frontend** (`.env.local`):
 ```bash
 NEXT_PUBLIC_CONVEX_URL=your_convex_url
+CONVEX_DEPLOYMENT=your_deployment_name
 NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id
 ```
 
