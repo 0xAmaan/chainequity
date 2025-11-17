@@ -37,8 +37,8 @@ export const ContractInfo = () => {
     queryOptions: { enabled: !!contractInstance && !isLoading },
   });
 
-  const contractAddress = contractData?.contract_address;
-  const chainId = contractData?.chain_id;
+  const contractAddress = contractData?.contractAddress;
+  const chainId = contractData?.chainId;
 
   // Show loading state AFTER hooks are called
   if (isLoading || !contractInstance) {

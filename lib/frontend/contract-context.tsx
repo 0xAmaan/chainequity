@@ -2,19 +2,21 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useParams } from "next/navigation";
+import { useQuery } from "convex/react";
 import { getContractInstance } from "./contract";
+import { api } from "@/convex/_generated/api";
 import type { ThirdwebContract } from "thirdweb";
 
 interface ContractData {
-  id: number;
-  contract_address: string;
-  chain_id: number;
+  _id: string;
+  contractAddress: string;
+  chainId: number;
   name: string;
   symbol: string;
   decimals: number;
-  deployer_address: string;
-  deployed_at: string;
-  is_active: boolean;
+  deployedBy?: string;
+  deployedAt: number;
+  isActive: boolean;
 }
 
 interface ContractContextType {
@@ -32,57 +34,48 @@ export const ContractProvider = ({ children }: { children: ReactNode }) => {
   const params = useParams();
   const contractAddress = params?.address as string | undefined;
 
-  const [contractData, setContractData] = useState<ContractData | null>(null);
+  // Get contract from Convex (auto-updates in real-time!)
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
+
   const [contractInstance, setContractInstance] = useState<ThirdwebContract | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchContract = async () => {
-    if (!contractAddress) {
-      setIsLoading(false);
+  const isLoading = contract === undefined;
+
+  useEffect(() => {
+    if (!contract) {
+      setContractInstance(null);
+      setError(contract === null ? "Contract not found" : null);
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
+    // Create contract instance with the correct chain
     try {
-      const response = await fetch(`/api/contracts/${contractAddress}`);
-      const data = await response.json();
-
-      if (!data.success) {
-        setError(data.error || "Failed to fetch contract");
-        setContractData(null);
-        setContractInstance(null);
-      } else {
-        setContractData(data.data);
-        // Create contract instance with the correct chain
-        const instance = getContractInstance(data.data.contract_address, data.data.chain_id);
-        setContractInstance(instance);
-      }
+      const instance = getContractInstance(contract.contractAddress, contract.chainId);
+      setContractInstance(instance);
+      setError(null);
     } catch (err) {
-      console.error("Error fetching contract:", err);
-      setError("Failed to fetch contract");
-      setContractData(null);
+      console.error("Error creating contract instance:", err);
+      setError("Failed to initialize contract");
       setContractInstance(null);
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchContract();
-  }, [contractAddress]);
+  }, [contract]);
 
   return (
     <ContractContext.Provider
       value={{
         contractAddress: contractAddress || null,
-        contractData,
+        contractData: contract || null,
         contractInstance,
         isLoading,
         error,
-        refetchContract: fetchContract,
+        refetchContract: async () => {
+          // Convex auto-refetches, but keep for API compatibility
+          console.log("Contract auto-updates with Convex");
+        },
       }}
     >
       {children}

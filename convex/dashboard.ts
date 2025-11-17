@@ -67,11 +67,12 @@ export const getStats = query({
     }));
 
     return {
-      totalSupply: totalSupply.toString(),
-      totalHolders,
-      topHolderPercentage,
-      latestBlock,
-      recentActivity,
+      total_supply: totalSupply.toString(),
+      total_holders: totalHolders,
+      top_holder_percentage: topHolderPercentage.toString(),
+      latest_block: latestBlock,
+      recent_activity_count: transfers.length,
+      recent_activity: recentActivity,
     };
   },
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery } from "convex/react";
 import { useContract } from "@/lib/frontend/contract-context";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ContractInfo } from "@/components/dashboard/contract-info";
@@ -9,45 +9,24 @@ import { RecentActivityPreview } from "@/components/dashboard/recent-activity-pr
 import { Coins, Users, Activity, TrendingUp } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-
-interface DashboardStats {
-  totalSupply: string;
-  totalHolders: number;
-  recentActivity: number;
-  topHolderPercentage: number;
-}
+import { api } from "@/convex/_generated/api";
 
 export default function ContractHome() {
   const { contractAddress, contractData, isLoading: contractLoading, error: contractError } = useContract();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!contractAddress || contractLoading) return;
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/dashboard?address=${contractAddress}`);
-        const data = await response.json();
+  // Get dashboard stats from Convex (auto-updates in real-time!)
+  const stats = useQuery(
+    api.dashboard.getStats,
+    contract?._id ? { contractId: contract._id } : "skip"
+  );
 
-        if (data.success) {
-          setStats(data.data);
-          setError(null);
-        } else {
-          setError(data.error || "Failed to fetch stats");
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard stats:", err);
-        setError("Failed to fetch dashboard stats");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [contractAddress, contractLoading]);
+  const loading = contractLoading || contract === undefined || stats === undefined;
 
   const formatSupply = (supply: string) => {
     const num = parseFloat(supply);
@@ -75,40 +54,33 @@ export default function ContractHome() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Supply"
-          value={loading ? "Loading..." : formatSupply(stats?.totalSupply || "0")}
+          value={loading ? "Loading..." : formatSupply(stats?.total_supply || "0")}
           subtitle="Total tokens issued"
           icon={Coins}
           iconColor="bg-blue-500/10 text-blue-500"
         />
         <StatCard
           title="Total Holders"
-          value={loading ? "..." : stats?.totalHolders || 0}
+          value={loading ? "..." : stats?.total_holders || 0}
           subtitle="Active token holders"
           icon={Users}
           iconColor="bg-green-500/10 text-green-500"
         />
         <StatCard
           title="Recent Activity"
-          value={loading ? "..." : stats?.recentActivity || 0}
+          value={loading ? "..." : stats?.recent_activity_count || 0}
           subtitle="Events in last 24h"
           icon={Activity}
           iconColor="bg-purple-500/10 text-purple-500"
         />
         <StatCard
           title="Top Holder"
-          value={loading ? "..." : `${(stats?.topHolderPercentage || 0).toFixed(2)}%`}
+          value={loading ? "..." : `${(parseFloat(stats?.top_holder_percentage || "0")).toFixed(2)}%`}
           subtitle="Largest ownership stake"
           icon={TrendingUp}
           iconColor="bg-orange-500/10 text-orange-500"
         />
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Contract Info and Distribution Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

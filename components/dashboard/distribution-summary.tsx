@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CopyableAddress } from "@/components/ui/copyable-address";
 import { useContract } from "@/lib/frontend/contract-context";
+import { api } from "@/convex/_generated/api";
 
 interface CapTableRow {
   address: string;
@@ -13,28 +14,21 @@ interface CapTableRow {
 
 export const DistributionSummary = () => {
   const { contractAddress } = useContract();
-  const [topHolders, setTopHolders] = useState<CapTableRow[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!contractAddress) return;
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-    const fetchTopHolders = async () => {
-      try {
-        const response = await fetch(`/api/captable?address=${contractAddress}`);
-        const data = await response.json();
-        if (data.success) {
-          setTopHolders(data.data.slice(0, 5)); // Top 5 holders
-        }
-      } catch (error) {
-        console.error("Failed to fetch top holders:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Get cap table from Convex (auto-updates in real-time!)
+  const capTable = useQuery(
+    api.captable.getCurrent,
+    contract?._id ? { contractId: contract._id } : "skip"
+  );
 
-    fetchTopHolders();
-  }, [contractAddress]);
+  const loading = contract === undefined || capTable === undefined;
+  const topHolders = capTable ? capTable.slice(0, 5) : [];
 
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
