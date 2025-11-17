@@ -21,7 +21,7 @@ export const Navbar = () => {
   const isContractPage = pathname?.startsWith("/contracts/");
 
   // Build contract-specific nav items
-  const contractAddress = contractData?.contract_address;
+  const contractAddress = contractData?.contractAddress;
   const baseNavItems = contractAddress ? [
     { href: `/contracts/${contractAddress}/home`, label: "Home" },
     { href: `/contracts/${contractAddress}/captable`, label: "Cap Table" },

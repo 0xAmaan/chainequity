@@ -4,6 +4,8 @@ forge script script/DeployGatedEquity.s.sol:DeployGatedEquity --rpc-url http://1
 
 # ChainEquity Testing Guide
 
+> **⚠️ NOTE:** This guide references PostgreSQL, which has been replaced with Convex. For updated testing procedures, see `CONVEX_TESTING_GUIDE.md`. This document is kept for historical reference.
+
 A comprehensive manual testing guide for the complete ChainEquity system.
 
 ## Overview

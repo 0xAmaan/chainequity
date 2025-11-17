@@ -177,6 +177,15 @@ export class ConvexIndexerClient {
   async getActiveContracts() {
     return await this.client.query(api.contracts.list, {});
   }
+
+  /**
+   * Get indexer state for a contract
+   */
+  async getIndexerState(contractId: any) {
+    return await this.client.query(api.contracts.getIndexerState, {
+      contractId,
+    });
+  }
 }
 
 // Export singleton instance

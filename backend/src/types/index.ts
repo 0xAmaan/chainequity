@@ -128,14 +128,6 @@ export interface Config {
   chainId: number;
   contractAddress: Address | null;
   privateKey: Hash;
-  database: {
-    url: string;
-    host: string;
-    port: number;
-    name: string;
-    user: string;
-    password: string;
-  };
   indexer: {
     startBlock: bigint;
     pollInterval: number;

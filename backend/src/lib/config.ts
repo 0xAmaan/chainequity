@@ -11,19 +11,13 @@ export type { Config };
 
 /**
  * Load and validate configuration from environment variables
+ * Database config removed - using Convex exclusively
  */
 export const loadConfig = (): Config => {
   const rpcUrl = process.env.RPC_URL || "http://127.0.0.1:8545";
   const chainId = parseInt(process.env.CHAIN_ID || "31337");
   const contractAddress = (process.env.CONTRACT_ADDRESS || null) as Address | null;
   const privateKey = (process.env.PRIVATE_KEY || "") as Hash;
-
-  const dbUrl = process.env.DATABASE_URL || "postgresql://localhost:5432/chain_equity";
-  const dbHost = process.env.DB_HOST || "localhost";
-  const dbPort = parseInt(process.env.DB_PORT || "5432");
-  const dbName = process.env.DB_NAME || "chain_equity";
-  const dbUser = process.env.DB_USER || "postgres";
-  const dbPassword = process.env.DB_PASSWORD || "";
 
   const indexerStartBlock = BigInt(process.env.INDEXER_START_BLOCK || "0");
   const indexerPollInterval = parseInt(process.env.INDEXER_POLL_INTERVAL || "1000");
@@ -36,14 +30,6 @@ export const loadConfig = (): Config => {
     chainId,
     contractAddress,
     privateKey,
-    database: {
-      url: dbUrl,
-      host: dbHost,
-      port: dbPort,
-      name: dbName,
-      user: dbUser,
-      password: dbPassword,
-    },
     indexer: {
       startBlock: indexerStartBlock,
       pollInterval: indexerPollInterval,
@@ -75,9 +61,7 @@ export const validateConfig = (
     );
   }
 
-  if (!config.database.url) {
-    errors.push("DATABASE_URL is required");
-  }
+  // Removed database validation - using Convex
 
   if (errors.length > 0) {
     console.error("❌ Configuration errors:");

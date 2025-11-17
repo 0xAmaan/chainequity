@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useSendTransaction, useReadContract } from "thirdweb/react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { prepareContractCall } from "thirdweb";
 import { useContract } from "@/lib/frontend/contract-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,34 +18,24 @@ export const StockSplit = () => {
   const [multiplier, setMultiplier] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
 
-  // Fetch all holder addresses from the cap table
-  const [holders, setHolders] = useState<string[]>([]);
-  const [loadingHolders, setLoadingHolders] = useState(false);
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-  const fetchHolders = async () => {
-    if (!contractAddress) {
-      toast.error("Contract address not loaded");
-      return;
-    }
+  // Get cap table from Convex
+  const capTable = useQuery(
+    api.captable.getCurrent,
+    contract?._id ? { contractId: contract._id } : "skip"
+  );
 
-    setLoadingHolders(true);
-    try {
-      const response = await fetch(`/api/captable?address=${contractAddress}`);
-      const data = await response.json();
-      if (data.success) {
-        const addresses = data.data.map((row: any) => row.address);
-        setHolders(addresses);
-        toast.success(`Fetched ${addresses.length} holders`);
-      } else {
-        toast.error(data.error || "Failed to fetch holders");
-      }
-    } catch (error) {
-      console.error("Failed to fetch holders:", error);
-      toast.error("Failed to fetch current holders from database");
-    } finally {
-      setLoadingHolders(false);
-    }
-  };
+  // Extract holder addresses
+  const holders = useMemo(() => {
+    return capTable?.map((row) => row.address) || [];
+  }, [capTable]);
+
+  const loadingHolders = capTable === undefined;
 
   const handleSplit = () => {
     if (!contractInstance) {
@@ -110,18 +102,12 @@ export const StockSplit = () => {
           />
         </div>
         <div className="space-y-2">
-          <Button
-            onClick={fetchHolders}
-            variant="outline"
-            disabled={loadingHolders}
-            size="sm"
-            className="w-full"
-          >
-            {holders.length > 0 ? `${holders.length} Holders` : "Fetch Holders"}
-          </Button>
+          <div className="text-xs text-muted-foreground">
+            {loadingHolders ? "Loading holders..." : `${holders.length} holder${holders.length !== 1 ? 's' : ''} detected`}
+          </div>
           <Button
             onClick={handleSplit}
-            disabled={isPending || !multiplier || holders.length === 0}
+            disabled={isPending || !multiplier || holders.length === 0 || loadingHolders}
             size="sm"
             className="w-full"
           >

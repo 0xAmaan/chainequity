@@ -1,29 +1,21 @@
 /**
  * Event listener that handles multiple contracts
+ * Now using Convex exclusively (Postgres removed)
  */
 
 import { convexIndexer } from "../lib/convex-client";
-import type { Database } from "../lib/db";
 import { logger } from "../lib/logger";
-import type {
-  BuybackEvent,
-  MetadataChange,
-  StockSplit,
-  TransferEvent,
-} from "../types";
 import type { ContractManager } from "./contract-manager";
 
 export class MultiContractListener {
   private contractManager: ContractManager;
-  private db: Database;
   private unwatchFunctions: (() => void)[] = [];
   private refreshInterval: NodeJS.Timeout | null = null;
   private watchedContracts: Set<string> = new Set(); // Track watched contracts
-  private convexContractIds: Map<number, any> = new Map(); // Map PostgreSQL ID to Convex ID
+  private convexContractIds: Map<string, any> = new Map(); // Map contract address to Convex ID
 
-  constructor(contractManager: ContractManager, db: Database) {
+  constructor(contractManager: ContractManager) {
     this.contractManager = contractManager;
-    this.db = db;
   }
 
   /**
@@ -90,7 +82,6 @@ export class MultiContractListener {
     }
 
     const { instance, info } = contract;
-    const contractId = info.id;
     const client = this.contractManager.getClient();
 
     logger.info(`👁️  Watching contract: ${info.name} (${address})`);
@@ -110,7 +101,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing Transfer: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleTransferEvent(log, contractId, address);
+          await this.handleTransferEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -135,7 +126,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing AddressAllowlisted: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleAllowlistAddEvent(log, contractId, address);
+          await this.handleAllowlistAddEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -165,7 +156,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing AddressRemovedFromAllowlist: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleAllowlistRemoveEvent(log, contractId, address);
+          await this.handleAllowlistRemoveEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -193,7 +184,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing StockSplit: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleStockSplitEvent(log, contractId, address);
+          await this.handleStockSplitEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -218,7 +209,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing MetadataChanged: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleMetadataChangeEvent(log, contractId, address);
+          await this.handleMetadataChangeEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -243,7 +234,7 @@ export class MultiContractListener {
           logger.info(
             `📨 [LIVE] Processing SharesBoughtBack: block ${log.blockNumber}, tx ${log.transactionHash}`,
           );
-          await this.handleBuybackEvent(log, contractId, address);
+          await this.handleBuybackEvent(log, address);
         }
       },
       onError: (error: any) => {
@@ -274,27 +265,23 @@ export class MultiContractListener {
   }
 
   /**
-   * Get or create Convex contract ID from PostgreSQL contract ID
+   * Get or cache Convex contract ID from contract address
    */
-  private async getConvexContractId(
-    postgresContractId: number,
-    contractAddress: string,
-  ): Promise<any> {
+  private async getConvexContractId(contractAddress: string): Promise<any> {
     // Check cache first
-    if (this.convexContractIds.has(postgresContractId)) {
-      return this.convexContractIds.get(postgresContractId);
+    if (this.convexContractIds.has(contractAddress)) {
+      return this.convexContractIds.get(contractAddress);
     }
 
     // Look up contract in Convex
     const convexContract = await convexIndexer.getContractByAddress(contractAddress);
 
     if (convexContract) {
-      this.convexContractIds.set(postgresContractId, convexContract._id);
+      this.convexContractIds.set(contractAddress, convexContract._id);
       return convexContract._id;
     }
 
-    // Contract doesn't exist in Convex yet - this is normal during migration
-    // We'll create it when we sync contracts to Convex
+    // Contract doesn't exist in Convex yet
     logger.warn(`⚠️  Contract ${contractAddress} not found in Convex yet`);
     return null;
   }
@@ -302,11 +289,7 @@ export class MultiContractListener {
   /**
    * Handle Transfer event
    */
-  private async handleTransferEvent(
-    log: any,
-    contractId: number,
-    contractAddress: string,
-  ): Promise<void> {
+  private async handleTransferEvent(log: any, contractAddress: string): Promise<void> {
     try {
       const { from, to, value } = log.args;
       const blockNumber = log.blockNumber;
@@ -322,88 +305,50 @@ export class MultiContractListener {
       const block = await client.getBlock({ blockNumber });
       const blockTimestamp = new Date(Number(block.timestamp) * 1000);
 
-      // Insert transfer event
-      const transfer: TransferEvent = {
-        from_address: from,
-        to_address: to,
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(`⚠️  Skipping Transfer event - contract not in Convex`);
+        return;
+      }
+
+      // Insert transfer event to Convex
+      await convexIndexer.insertTransfer({
+        contractId: convexContractId,
+        fromAddress: from,
+        toAddress: to,
         amount: value.toString(),
-        block_number: blockNumber,
-        block_timestamp: blockTimestamp,
-        tx_hash: txHash,
-        log_index: logIndex,
-      };
+        blockNumber: blockNumber.toString(),
+        blockTimestamp: blockTimestamp.getTime(),
+        txHash,
+        logIndex,
+      });
 
-      // Set contract ID for this operation (PostgreSQL)
-      await this.db.setContractId(contractId);
-      await this.db.insertTransfer(transfer);
-
-      // Update balances (PostgreSQL)
+      // Update balances in Convex
       const zeroAddress = "0x0000000000000000000000000000000000000000";
 
       if (from !== zeroAddress) {
-        await this.db.updateBalance(from, value, false, blockNumber);
+        await convexIndexer.updateBalance({
+          contractId: convexContractId,
+          address: from,
+          amount: value.toString(),
+          isCredit: false,
+          blockNumber: blockNumber.toString(),
+        });
       }
 
       if (to !== zeroAddress) {
-        await this.db.updateBalance(to, value, true, blockNumber);
+        await convexIndexer.updateBalance({
+          contractId: convexContractId,
+          address: to,
+          amount: value.toString(),
+          isCredit: true,
+          blockNumber: blockNumber.toString(),
+        });
       }
 
-      // Update indexer state (PostgreSQL)
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex (dual-write for migration safety)
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          await convexIndexer.insertTransfer({
-            contractId: convexContractId,
-            fromAddress: from,
-            toAddress: to,
-            amount: value.toString(),
-            blockNumber: blockNumber.toString(),
-            blockTimestamp: blockTimestamp.getTime(),
-            txHash,
-            logIndex,
-          });
-
-          // Update balances in Convex
-          if (from !== zeroAddress) {
-            await convexIndexer.updateBalance({
-              contractId: convexContractId,
-              address: from,
-              amount: value.toString(),
-              isCredit: false,
-              blockNumber: blockNumber.toString(),
-            });
-          }
-
-          if (to !== zeroAddress) {
-            await convexIndexer.updateBalance({
-              contractId: convexContractId,
-              address: to,
-              amount: value.toString(),
-              isCredit: true,
-              blockNumber: blockNumber.toString(),
-            });
-          }
-
-          // Update indexer state in Convex
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-
-          logger.debug(`✅ Synced Transfer event to Convex at block ${blockNumber}`);
-        } catch (convexError) {
-          logger.error(
-            "Error syncing Transfer to Convex (continuing with PostgreSQL):",
-            convexError,
-          );
-        }
-      }
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(`✅ Processed Transfer event at block ${blockNumber}`);
     } catch (error) {
@@ -416,7 +361,6 @@ export class MultiContractListener {
    */
   private async handleAllowlistAddEvent(
     log: any,
-    contractId: number,
     contractAddress: string,
   ): Promise<void> {
     try {
@@ -428,40 +372,29 @@ export class MultiContractListener {
         `✅ [${contractAddress.slice(0, 10)}...] Address allowlisted: ${account} [Block: ${blockNumber}]`,
       );
 
-      await this.db.setContractId(contractId);
-      await this.db.addToAllowlist(account, blockNumber, txHash);
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          const client = this.contractManager.getClient();
-          const block = await client.getBlock({ blockNumber });
-          const blockTimestamp = Number(block.timestamp) * 1000;
-
-          await convexIndexer.addToAllowlist({
-            contractId: convexContractId,
-            address: account,
-            blockNumber: blockNumber.toString(),
-            blockTimestamp,
-            txHash,
-          });
-
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-          logger.debug(
-            `✅ Synced AddressAllowlisted to Convex at block ${blockNumber}`,
-          );
-        } catch (convexError) {
-          logger.error("Error syncing AddressAllowlisted to Convex:", convexError);
-        }
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(`⚠️  Skipping AddressAllowlisted event - contract not in Convex`);
+        return;
       }
+
+      // Get block to extract timestamp
+      const client = this.contractManager.getClient();
+      const block = await client.getBlock({ blockNumber });
+      const blockTimestamp = Number(block.timestamp) * 1000;
+
+      // Add to allowlist in Convex
+      await convexIndexer.addToAllowlist({
+        contractId: convexContractId,
+        address: account,
+        blockNumber: blockNumber.toString(),
+        blockTimestamp,
+        txHash,
+      });
+
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(`✅ Processed AddressAllowlisted event at block ${blockNumber}`);
     } catch (error) {
@@ -474,7 +407,6 @@ export class MultiContractListener {
    */
   private async handleAllowlistRemoveEvent(
     log: any,
-    contractId: number,
     contractAddress: string,
   ): Promise<void> {
     try {
@@ -486,43 +418,31 @@ export class MultiContractListener {
         `❌ [${contractAddress.slice(0, 10)}...] Address removed from allowlist: ${account} [Block: ${blockNumber}]`,
       );
 
-      await this.db.setContractId(contractId);
-      await this.db.removeFromAllowlist(account, blockNumber, txHash);
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          const client = this.contractManager.getClient();
-          const block = await client.getBlock({ blockNumber });
-          const blockTimestamp = Number(block.timestamp) * 1000;
-
-          await convexIndexer.removeFromAllowlist({
-            contractId: convexContractId,
-            address: account,
-            blockNumber: blockNumber.toString(),
-            blockTimestamp,
-            txHash,
-          });
-
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-          logger.debug(
-            `✅ Synced AddressRemovedFromAllowlist to Convex at block ${blockNumber}`,
-          );
-        } catch (convexError) {
-          logger.error(
-            "Error syncing AddressRemovedFromAllowlist to Convex:",
-            convexError,
-          );
-        }
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(
+          `⚠️  Skipping AddressRemovedFromAllowlist event - contract not in Convex`,
+        );
+        return;
       }
+
+      // Get block to extract timestamp
+      const client = this.contractManager.getClient();
+      const block = await client.getBlock({ blockNumber });
+      const blockTimestamp = Number(block.timestamp) * 1000;
+
+      // Remove from allowlist in Convex
+      await convexIndexer.removeFromAllowlist({
+        contractId: convexContractId,
+        address: account,
+        blockNumber: blockNumber.toString(),
+        blockTimestamp,
+        txHash,
+      });
+
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(
         `✅ Processed AddressRemovedFromAllowlist event at block ${blockNumber}`,
@@ -537,7 +457,6 @@ export class MultiContractListener {
    */
   private async handleStockSplitEvent(
     log: any,
-    contractId: number,
     contractAddress: string,
   ): Promise<void> {
     try {
@@ -554,48 +473,26 @@ export class MultiContractListener {
       const block = await client.getBlock({ blockNumber });
       const blockTimestamp = new Date(Number(block.timestamp) * 1000);
 
-      // Count affected holders
-      await this.db.setContractId(contractId);
-      const balances = await this.db.getAllBalances();
-      const affectedHolders = balances.length;
-
-      const split: StockSplit = {
-        multiplier: Number(multiplier),
-        new_total_supply: newTotalSupply.toString(),
-        block_number: blockNumber,
-        block_timestamp: blockTimestamp,
-        tx_hash: txHash,
-        affected_holders: affectedHolders,
-      };
-      await this.db.insertStockSplit(split);
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          await convexIndexer.insertStockSplit({
-            contractId: convexContractId,
-            multiplier: Number(multiplier),
-            newTotalSupply: newTotalSupply.toString(),
-            blockNumber: blockNumber.toString(),
-            blockTimestamp: blockTimestamp.getTime(),
-            txHash,
-            affectedHolders,
-          });
-
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-          logger.debug(`✅ Synced StockSplit to Convex at block ${blockNumber}`);
-        } catch (convexError) {
-          logger.error("Error syncing StockSplit to Convex:", convexError);
-        }
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(`⚠️  Skipping StockSplit event - contract not in Convex`);
+        return;
       }
+
+      // Insert stock split to Convex
+      await convexIndexer.insertStockSplit({
+        contractId: convexContractId,
+        multiplier: Number(multiplier),
+        newTotalSupply: newTotalSupply.toString(),
+        blockNumber: blockNumber.toString(),
+        blockTimestamp: blockTimestamp.getTime(),
+        txHash,
+        affectedHolders: 0, // Will be calculated by Convex if needed
+      });
+
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(`✅ Processed StockSplit event at block ${blockNumber}`);
     } catch (error) {
@@ -608,7 +505,6 @@ export class MultiContractListener {
    */
   private async handleMetadataChangeEvent(
     log: any,
-    contractId: number,
     contractAddress: string,
   ): Promise<void> {
     try {
@@ -625,47 +521,27 @@ export class MultiContractListener {
       const block = await client.getBlock({ blockNumber });
       const blockTimestamp = new Date(Number(block.timestamp) * 1000);
 
-      const change: MetadataChange = {
-        old_name: oldName,
-        new_name: newName,
-        old_symbol: oldSymbol,
-        new_symbol: newSymbol,
-        block_number: blockNumber,
-        block_timestamp: blockTimestamp,
-        tx_hash: txHash,
-      };
-
-      await this.db.setContractId(contractId);
-      await this.db.insertMetadataChange(change);
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          await convexIndexer.insertMetadataChange({
-            contractId: convexContractId,
-            oldName,
-            newName,
-            oldSymbol,
-            newSymbol,
-            blockNumber: blockNumber.toString(),
-            blockTimestamp: blockTimestamp.getTime(),
-            txHash,
-          });
-
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-          logger.debug(`✅ Synced MetadataChanged to Convex at block ${blockNumber}`);
-        } catch (convexError) {
-          logger.error("Error syncing MetadataChanged to Convex:", convexError);
-        }
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(`⚠️  Skipping MetadataChanged event - contract not in Convex`);
+        return;
       }
+
+      // Insert metadata change to Convex
+      await convexIndexer.insertMetadataChange({
+        contractId: convexContractId,
+        oldName,
+        newName,
+        oldSymbol,
+        newSymbol,
+        blockNumber: blockNumber.toString(),
+        blockTimestamp: blockTimestamp.getTime(),
+        txHash,
+      });
+
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(`✅ Processed MetadataChanged event at block ${blockNumber}`);
     } catch (error) {
@@ -676,11 +552,7 @@ export class MultiContractListener {
   /**
    * Handle SharesBoughtBack event
    */
-  private async handleBuybackEvent(
-    log: any,
-    contractId: number,
-    contractAddress: string,
-  ): Promise<void> {
+  private async handleBuybackEvent(log: any, contractAddress: string): Promise<void> {
     try {
       const { holder, amount } = log.args;
       const blockNumber = log.blockNumber;
@@ -696,45 +568,26 @@ export class MultiContractListener {
       const block = await client.getBlock({ blockNumber });
       const blockTimestamp = new Date(Number(block.timestamp) * 1000);
 
-      const buyback: BuybackEvent = {
-        holder_address: holder,
-        amount: amount.toString(),
-        block_number: blockNumber,
-        block_timestamp: blockTimestamp,
-        tx_hash: txHash,
-        log_index: logIndex,
-      };
-
-      await this.db.setContractId(contractId);
-      await this.db.insertBuyback(buyback);
-      await this.db.updateIndexerState(blockNumber);
-
-      // Also write to Convex
-      const convexContractId = await this.getConvexContractId(
-        contractId,
-        contractAddress,
-      );
-      if (convexContractId) {
-        try {
-          await convexIndexer.insertBuyback({
-            contractId: convexContractId,
-            holderAddress: holder,
-            amount: amount.toString(),
-            blockNumber: blockNumber.toString(),
-            blockTimestamp: blockTimestamp.getTime(),
-            txHash,
-            logIndex,
-          });
-
-          await convexIndexer.updateIndexerState(
-            convexContractId,
-            blockNumber.toString(),
-          );
-          logger.debug(`✅ Synced SharesBoughtBack to Convex at block ${blockNumber}`);
-        } catch (convexError) {
-          logger.error("Error syncing SharesBoughtBack to Convex:", convexError);
-        }
+      // Get Convex contract ID
+      const convexContractId = await this.getConvexContractId(contractAddress);
+      if (!convexContractId) {
+        logger.warn(`⚠️  Skipping SharesBoughtBack event - contract not in Convex`);
+        return;
       }
+
+      // Insert buyback to Convex
+      await convexIndexer.insertBuyback({
+        contractId: convexContractId,
+        holderAddress: holder,
+        amount: amount.toString(),
+        blockNumber: blockNumber.toString(),
+        blockTimestamp: blockTimestamp.getTime(),
+        txHash,
+        logIndex,
+      });
+
+      // Update indexer state in Convex
+      await convexIndexer.updateIndexerState(convexContractId, blockNumber.toString());
 
       logger.debug(`✅ Processed SharesBoughtBack event at block ${blockNumber}`);
     } catch (error) {
@@ -764,16 +617,23 @@ export class MultiContractListener {
     }
 
     const { instance, info } = contract;
-    const contractId = info.id;
 
     // Get current block number
     const client = this.contractManager.getClient();
     const currentBlock = await client.getBlockNumber();
 
-    // Get indexer state
-    await this.db.setContractId(contractId);
-    const state = await this.db.getIndexerState();
-    const lastProcessedBlock = state.last_processed_block;
+    // Get Convex contract ID
+    const convexContractId = await this.getConvexContractId(address);
+    if (!convexContractId) {
+      logger.error(`⚠️  Contract ${address} not found in Convex - cannot sync`);
+      return;
+    }
+
+    // Get indexer state from Convex
+    const state = await convexIndexer.getIndexerState(convexContractId);
+    const lastProcessedBlock = state?.lastProcessedBlock
+      ? BigInt(state.lastProcessedBlock)
+      : BigInt(0);
 
     if (lastProcessedBlock >= currentBlock) {
       logger.info(
@@ -787,7 +647,8 @@ export class MultiContractListener {
       `🔄 Syncing ${info.name} from block ${fromBlock} to ${currentBlock}...`,
     );
 
-    await this.db.setIndexerSyncing(true);
+    // Set syncing status
+    await convexIndexer.setIndexerSyncing(convexContractId, true);
 
     try {
       // Fetch Transfer events
@@ -803,7 +664,7 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing Transfer at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleTransferEvent(log, contractId, address);
+        await this.handleTransferEvent(log, address);
       }
 
       // Fetch AddressAllowlisted events
@@ -821,7 +682,7 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing AddressAllowlisted at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleAllowlistAddEvent(log, contractId, address);
+        await this.handleAllowlistAddEvent(log, address);
       }
 
       // Fetch AddressRemovedFromAllowlist events
@@ -839,7 +700,7 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing AddressRemovedFromAllowlist at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleAllowlistRemoveEvent(log, contractId, address);
+        await this.handleAllowlistRemoveEvent(log, address);
       }
 
       // Fetch StockSplit events
@@ -855,7 +716,7 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing StockSplit at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleStockSplitEvent(log, contractId, address);
+        await this.handleStockSplitEvent(log, address);
       }
 
       // Fetch MetadataChanged events
@@ -873,7 +734,7 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing MetadataChanged at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleMetadataChangeEvent(log, contractId, address);
+        await this.handleMetadataChangeEvent(log, address);
       }
 
       // Fetch SharesBoughtBack events
@@ -891,15 +752,18 @@ export class MultiContractListener {
         logger.info(
           `📊 [HISTORICAL] Processing SharesBoughtBack at block ${log.blockNumber}, tx ${log.transactionHash}`,
         );
-        await this.handleBuybackEvent(log, contractId, address);
+        await this.handleBuybackEvent(log, address);
       }
 
       // Update indexer state to current block (even if no events found)
-      await this.db.updateIndexerState(currentBlock);
-      await this.db.setIndexerSyncing(false);
+      await convexIndexer.updateIndexerState(
+        convexContractId,
+        currentBlock.toString(),
+      );
+      await convexIndexer.setIndexerSyncing(convexContractId, false);
       logger.info(`✅ ${info.name} synced successfully to block ${currentBlock}`);
     } catch (error) {
-      await this.db.setIndexerSyncing(false);
+      await convexIndexer.setIndexerSyncing(convexContractId, false);
       logger.error(`Error syncing ${info.name}:`, error);
       throw error;
     }

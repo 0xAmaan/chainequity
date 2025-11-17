@@ -43,16 +43,16 @@ export const NavbarContractInfo = ({ onOwnershipChange, onContractDataChange }: 
     queryOptions: { enabled: !!contractInstance && !isLoading },
   });
 
-  // Pass live contract data to parent when it changes
+  // Pass contract data to parent immediately, then enhance with blockchain data when available
   useEffect(() => {
-    if (contractData && name && symbol) {
+    if (contractData) {
+      // Pass data immediately so tabs can render
       onContractDataChange({
         ...contractData,
-        name,
-        symbol,
+        // Use blockchain data if available, otherwise fallback to cached data
+        name: name || contractData.name,
+        symbol: symbol || contractData.symbol,
       });
-    } else if (contractData) {
-      onContractDataChange(contractData);
     }
   }, [contractData, name, symbol, onContractDataChange]);
 

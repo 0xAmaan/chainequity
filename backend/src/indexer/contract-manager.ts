@@ -1,17 +1,18 @@
 /**
  * Manages multiple contract instances for the indexer
+ * Now using Convex exclusively (Postgres removed)
  */
 
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { convexIndexer } from "../lib/convex-client";
 import { logger } from "../lib/logger";
 import type { Config } from "../types";
-import { Pool } from "pg";
 import { createPublicClient, getContract, http, type PublicClient } from "viem";
 import { foundry } from "viem/chains";
 
 interface ContractInfo {
-  id: number;
+  id: string; // Convex ID (not Postgres number)
   address: string;
   name: string;
   symbol: string;
@@ -20,7 +21,6 @@ interface ContractInfo {
 
 export class ContractManager {
   private client: PublicClient;
-  private pool: Pool;
   private abi: any;
   private contracts: Map<string, { info: ContractInfo; instance: any }> = new Map();
 
@@ -32,15 +32,6 @@ export class ContractManager {
       pollingInterval: 1000, // Poll every second for events
     });
 
-    // Create database connection
-    this.pool = new Pool({
-      host: config.database.host,
-      port: config.database.port,
-      database: config.database.name,
-      user: config.database.user,
-      password: config.database.password,
-    });
-
     // Load ABI
     const abiPath = resolve(__dirname, "../lib/GatedEquityToken.abi.json");
     const abiFile = JSON.parse(readFileSync(abiPath, "utf-8"));
@@ -49,20 +40,18 @@ export class ContractManager {
   }
 
   /**
-   * Load all active contracts from the database
+   * Load all active contracts from Convex
    */
   async loadContracts(): Promise<void> {
-    const result = await this.pool.query(
-      "SELECT id, contract_address, name, symbol, chain_id FROM contracts WHERE is_active = TRUE ORDER BY id",
-    );
+    const contracts = await convexIndexer.getActiveContracts();
 
-    for (const row of result.rows) {
+    for (const contract of contracts) {
       const contractInfo: ContractInfo = {
-        id: row.id,
-        address: row.contract_address,
-        name: row.name,
-        symbol: row.symbol,
-        chain_id: row.chain_id,
+        id: contract._id,
+        address: contract.contractAddress,
+        name: contract.name,
+        symbol: contract.symbol,
+        chain_id: contract.chainId,
       };
 
       // Create contract instance
@@ -102,7 +91,7 @@ export class ContractManager {
   /**
    * Get contract ID by address
    */
-  getContractId(address: string): number | undefined {
+  getContractId(address: string): string | undefined {
     return this.contracts.get(address.toLowerCase())?.info.id;
   }
 
@@ -114,26 +103,24 @@ export class ContractManager {
   }
 
   /**
-   * Check for newly deployed contracts and add them
+   * Check for newly deployed contracts from Convex and add them
    * Returns array of new contract addresses
    */
   async refreshContracts(): Promise<string[]> {
-    const result = await this.pool.query(
-      "SELECT id, contract_address, name, symbol, chain_id FROM contracts WHERE is_active = TRUE ORDER BY id",
-    );
+    const contracts = await convexIndexer.getActiveContracts();
 
     const newAddresses: string[] = [];
 
-    for (const row of result.rows) {
-      const address = row.contract_address.toLowerCase();
+    for (const contract of contracts) {
+      const address = contract.contractAddress.toLowerCase();
 
       if (!this.contracts.has(address)) {
         const contractInfo: ContractInfo = {
-          id: row.id,
-          address: row.contract_address,
-          name: row.name,
-          symbol: row.symbol,
-          chain_id: row.chain_id,
+          id: contract._id,
+          address: contract.contractAddress,
+          name: contract.name,
+          symbol: contract.symbol,
+          chain_id: contract.chainId,
         };
 
         const instance = getContract({
@@ -158,9 +145,9 @@ export class ContractManager {
   }
 
   /**
-   * Close database connection
+   * No database connection to close (using Convex)
    */
   async close(): Promise<void> {
-    await this.pool.end();
+    // No-op: Convex connections are managed automatically
   }
 }

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import {
   Dialog,
   DialogContent,
@@ -14,16 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Coins, Search, Rocket } from "lucide-react";
 
-interface Contract {
-  id: number;
-  contract_address: string;
-  chain_id: number;
-  name: string;
-  symbol: string;
-  deployer_address: string;
-  deployed_at: string;
-}
-
 interface ContractSelectorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,47 +23,22 @@ interface ContractSelectorModalProps {
 
 export const ContractSelectorModal = ({ open, onOpenChange }: ContractSelectorModalProps) => {
   const router = useRouter();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
+  const contracts = useQuery(api.contracts.list);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
+  const loading = contracts === undefined;
 
-  useEffect(() => {
-    if (open) {
-      fetchContracts();
-    }
-  }, [open]);
+  const filteredContracts = useMemo(() => {
+    if (!contracts) return [];
+    if (searchQuery.trim() === "") return contracts;
 
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredContracts(contracts);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = contracts.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.symbol.toLowerCase().includes(query) ||
-          c.contract_address.toLowerCase().includes(query)
-      );
-      setFilteredContracts(filtered);
-    }
+    const query = searchQuery.toLowerCase();
+    return contracts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.symbol.toLowerCase().includes(query) ||
+        c.contractAddress.toLowerCase().includes(query)
+    );
   }, [searchQuery, contracts]);
-
-  const fetchContracts = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/contracts");
-      const data = await response.json();
-      if (data.success) {
-        setContracts(data.data);
-        setFilteredContracts(data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch contracts:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSelectContract = (address: string) => {
     router.push(`/contracts/${address}/home`);
@@ -149,9 +116,9 @@ export const ContractSelectorModal = ({ open, onOpenChange }: ContractSelectorMo
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredContracts.map((contract) => (
                   <Card
-                    key={contract.id}
+                    key={contract._id}
                     className="hover:border-primary cursor-pointer transition-colors"
-                    onClick={() => handleSelectContract(contract.contract_address)}
+                    onClick={() => handleSelectContract(contract.contractAddress)}
                   >
                     <CardHeader className="pb-3">
                       <CardTitle className="text-base flex items-center gap-2">
@@ -166,19 +133,19 @@ export const ContractSelectorModal = ({ open, onOpenChange }: ContractSelectorMo
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Address:</span>
                         <span className="font-mono">
-                          {contract.contract_address.slice(0, 6)}...
-                          {contract.contract_address.slice(-4)}
+                          {contract.contractAddress.slice(0, 6)}...
+                          {contract.contractAddress.slice(-4)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Chain:</span>
                         <span>
-                          {contract.chain_id === 31337 ? "Localhost" : "Arb Sepolia"}
+                          {contract.chainId === 31337 ? "Localhost" : "Arb Sepolia"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Deployed:</span>
-                        <span>{new Date(contract.deployed_at).toLocaleDateString()}</span>
+                        <span>{new Date(contract.deployedAt).toLocaleDateString()}</span>
                       </div>
                     </CardContent>
                   </Card>

@@ -7,7 +7,7 @@ Off-chain infrastructure for the ChainEquity gated equity token system.
 ### Prerequisites
 
 - Bun installed (`curl -fsSL https://bun.sh/install | bash`)
-- PostgreSQL running (`brew install postgresql && brew services start postgresql`)
+- Convex account and project setup (`npx convex dev`)
 - Anvil running (`anvil --port 8545`)
 
 ### Setup
@@ -16,8 +16,8 @@ Off-chain infrastructure for the ChainEquity gated equity token system.
 # 1. Install dependencies (from project root)
 bun install
 
-# 2. Initialize database
-bun run db:init
+# 2. Start Convex development server
+npx convex dev
 
 # 3. Deploy contract (from project root)
 forge script script/DeployGatedEquity.s.sol:DeployGatedEquity \
@@ -25,7 +25,7 @@ forge script script/DeployGatedEquity.s.sol:DeployGatedEquity \
   --broadcast \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-# 4. Update CONTRACT_ADDRESS in backend/.env with deployed address
+# 4. Update CONTRACT_ADDRESS in .env with deployed address
 
 # 5. Start indexer (in separate terminal)
 bun run indexer
@@ -53,24 +53,13 @@ bun run cli <command> --help
 
 ### Demo
 
-Run the full end-to-end demo:
-
-```bash
-bun backend/demo.ts
-```
-
-This will:
-- Deploy contract
-- Initialize database
-- Start indexer
-- Execute all operations
-- Generate cap tables
+The indexer continuously syncs blockchain events to Convex in real-time. Use the CLI commands to interact with the contract and view the cap table.
 
 ## Architecture
 
 ```
 ┌──────────┐         ┌──────────┐         ┌──────────┐
-│  Anvil   │◄────────│ Indexer  │────────►│ Postgres │
+│  Anvil   │◄────────│ Indexer  │────────►│  Convex  │
 │ (Chain)  │  Events │  Daemon  │  Write  │    DB    │
 └──────────┘         └──────────┘         └──────────┘
      │                     │                     │
@@ -84,8 +73,8 @@ This will:
 
 ## Components
 
-### 1. Database (`db/`)
-- PostgreSQL schema with tables, views, and functions
+### 1. Database (Convex)
+- Cloud-hosted real-time database
 - Tracks allowlist, transfers, balances, corporate actions
 - Supports historical queries at any block
 
@@ -162,7 +151,7 @@ bun run cli info
 
 ## Configuration
 
-Edit `backend/.env`:
+Edit `.env` and `.env.local`:
 
 ```bash
 # Blockchain
@@ -173,11 +162,9 @@ CONTRACT_ADDRESS=<your_deployed_address>
 # Admin wallet
 PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 
-# Database
-DATABASE_URL=postgresql://localhost:5432/chain_equity
-DB_NAME=chain_equity
-DB_USER=postgres
-DB_PASSWORD=postgres
+# Convex
+CONVEX_DEPLOYMENT=<your_convex_deployment>
+NEXT_PUBLIC_CONVEX_URL=<your_convex_url>
 
 # Logging
 LOG_LEVEL=info
@@ -190,7 +177,7 @@ Logs are stored in `backend/logs/`:
 - `combined.log` - All logs
 - `indexer.log` - Indexer output (if redirected)
 
-## Database Schema
+## Database Schema (Convex)
 
 Key tables:
 - `allowlist` - Approved addresses
@@ -200,25 +187,19 @@ Key tables:
 - `metadata_changes` - Name/symbol updates
 - `indexer_state` - Sync progress
 
-Views:
-- `current_cap_table` - Real-time ownership distribution
-- `recent_activity` - Last 100 events
-
 ## Troubleshooting
 
-### Database connection failed
+### Convex connection failed
 ```bash
-# Check PostgreSQL status
-pg_isready -h localhost -p 5432
+# Check Convex deployment status
+npx convex dev
 
-# Start PostgreSQL
-brew services start postgresql  # macOS
-sudo systemctl start postgresql # Linux
+# Verify CONVEX_DEPLOYMENT and NEXT_PUBLIC_CONVEX_URL in .env.local
 ```
 
 ### Contract address not set
 ```bash
-# Update backend/.env with deployed address
+# Update .env with deployed address
 CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
 ```
 
@@ -284,11 +265,8 @@ const unwatchMyEvent = this.contract.watchEvents(
 ## Testing
 
 ```bash
-# Run full demo
-bun backend/demo.ts
-
 # Manual testing
-bun run db:init             # Reset database
+npx convex dev              # Start Convex
 bun run indexer &           # Start indexer
 bun run cli approve 0x...   # Test command
 bun run cli captable        # Verify
@@ -300,11 +278,11 @@ For production:
 1. Use environment-specific RPC URLs
 2. Secure private key management (KMS, Vault)
 3. Add authentication to CLI
-4. Set up database backups
+4. Convex automatically handles backups and scaling
 5. Monitor indexer uptime
 6. Add rate limiting
 7. Implement reorg handling
 
 ---
 
-**See PHASE2_COMPLETE.md for detailed documentation**
+**See CONVEX_MIGRATION_GUIDE.md for migration details**

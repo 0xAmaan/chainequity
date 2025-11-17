@@ -1,45 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Rocket, Coins, TrendingUp } from "lucide-react";
+import { Rocket, Coins } from "lucide-react";
 import Link from "next/link";
-
-interface Contract {
-  id: number;
-  contract_address: string;
-  chain_id: number;
-  name: string;
-  symbol: string;
-  deployer_address: string;
-  deployed_at: string;
-}
 
 export default function HomePage() {
   const router = useRouter();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContracts = async () => {
-      try {
-        const response = await fetch("/api/contracts");
-        const data = await response.json();
-        if (data.success) {
-          setContracts(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch contracts:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContracts();
-  }, []);
+  const contracts = useQuery(api.contracts.list);
+  const loading = contracts === undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -97,9 +70,9 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {contracts.map((contract) => (
                 <Card
-                  key={contract.id}
+                  key={contract._id}
                   className="hover:border-primary cursor-pointer transition-colors"
-                  onClick={() => router.push(`/contracts/${contract.contract_address}/home`)}
+                  onClick={() => router.push(`/contracts/${contract.contractAddress}/home`)}
                 >
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -114,16 +87,16 @@ export default function HomePage() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Address:</span>
                       <span className="font-mono text-xs">
-                        {contract.contract_address.slice(0, 6)}...{contract.contract_address.slice(-4)}
+                        {contract.contractAddress.slice(0, 6)}...{contract.contractAddress.slice(-4)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Chain:</span>
-                      <span>{contract.chain_id === 31337 ? "Localhost" : "Arbitrum Sepolia"}</span>
+                      <span>{contract.chainId === 31337 ? "Localhost" : "Arbitrum Sepolia"}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Deployed:</span>
-                      <span>{new Date(contract.deployed_at).toLocaleDateString()}</span>
+                      <span>{new Date(contract.deployedAt).toLocaleDateString()}</span>
                     </div>
                   </CardContent>
                 </Card>

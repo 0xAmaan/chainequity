@@ -1,19 +1,17 @@
 #!/usr/bin/env bun
 /**
  * ChainEquity Multi-Contract Event Indexer
- * Automatically watches ALL contracts in the database
+ * Automatically watches ALL contracts from Convex
  */
 import { getConfig } from "../lib/config";
-import { Database } from "../lib/db";
 import { logger } from "../lib/logger";
 import { ContractManager } from "./contract-manager";
 import { MultiContractListener } from "./multi-contract-listener";
 
 class MultiContractIndexer {
   private config = getConfig(false); // Don't require CONTRACT_ADDRESS
-  private db = new Database(this.config);
   private contractManager = new ContractManager(this.config);
-  private eventListener = new MultiContractListener(this.contractManager, this.db);
+  private eventListener = new MultiContractListener(this.contractManager);
   private isShuttingDown = false;
 
   /**
@@ -22,18 +20,10 @@ class MultiContractIndexer {
   async initialize(): Promise<void> {
     logger.info("🚀 ChainEquity Multi-Contract Indexer Starting...");
     logger.info(`🔗 RPC URL: ${this.config.rpcUrl}`);
-    logger.info(`🗄️  Database: ${this.config.database.name}`);
+    logger.info(`💾 Using Convex for data storage`);
 
-    // Test database connection
-    logger.info("Testing database connection...");
-    const dbConnected = await this.db.testConnection();
-    if (!dbConnected) {
-      throw new Error("Failed to connect to database");
-    }
-    logger.info("✅ Database connection successful");
-
-    // Load all contracts from database
-    logger.info("Loading contracts from database...");
+    // Load all contracts from Convex
+    logger.info("Loading contracts from Convex...");
     await this.contractManager.loadContracts();
 
     const addresses = this.contractManager.getContractAddresses();
@@ -55,7 +45,7 @@ class MultiContractIndexer {
 
     logger.info("\n✅ Multi-contract indexer is running and listening for events...");
     logger.info("   - Automatically detects newly deployed contracts");
-    logger.info("   - Indexes all contracts in the database");
+    logger.info("   - Indexes all contracts from Convex");
     logger.info(
       "   - Deploy contracts through the web UI and they'll be tracked automatically\n",
     );
@@ -116,8 +106,7 @@ class MultiContractIndexer {
     logger.info("🛑 Stopping event listener...");
     this.eventListener.stop();
 
-    logger.info("🛑 Closing database connection...");
-    await this.db.close();
+    logger.info("🛑 Cleaning up resources...");
     await this.contractManager.close();
 
     logger.info("✅ Shutdown complete");

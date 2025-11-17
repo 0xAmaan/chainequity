@@ -45,6 +45,7 @@
     "test",
     "out",
     "node_modules",
+    "backend",
     "-resources/*",
     "z-FigmaDesign"
   ]

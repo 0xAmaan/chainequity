@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useActiveAccount, useActiveWalletChain, useSwitchActiveWalletChain } from "thirdweb/react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Navbar } from "@/components/navbar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +27,7 @@ export default function DeployPage() {
   const account = useActiveAccount();
   const activeChain = useActiveWalletChain();
   const switchChain = useSwitchActiveWalletChain();
+  const upsertContract = useMutation(api.mutations.contracts.upsert);
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [isDeploying, setIsDeploying] = useState(false);
@@ -83,68 +86,23 @@ export default function DeployPage() {
 
       // Save contract to database
       try {
-        const response = await fetch("/api/contracts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contractAddress,
-            chainId: targetChain.id,
-            name: tokenName,
-            symbol: tokenSymbol,
-            decimals: 18,
-            deployerAddress: account.address,
-          }),
+        await upsertContract({
+          contractAddress,
+          chainId: targetChain.id,
+          name: tokenName,
+          symbol: tokenSymbol,
+          decimals: 18,
+          deployedAt: Date.now(),
+          deployedBy: account.address,
         });
 
-        const data = await response.json();
+        toast.success("Token deployed successfully! Redirecting to dashboard...");
 
-        if (!data.success) {
-          console.error("Failed to save contract to database:", data.error);
-          toast.warning("Contract deployed but failed to save to registry");
-        } else {
-          toast.success("Token deployed successfully! Waiting for indexer...");
-
-          // Trigger indexer reload
-          await fetch("/api/indexer/reload", { method: "POST" });
-
-          // Poll indexer status until ready
-          const checkIndexerReady = async (attempt = 1): Promise<void> => {
-            try {
-              const statusResponse = await fetch(
-                `/api/indexer/status?address=${contractAddress}`
-              );
-              const statusData = await statusResponse.json();
-
-              if (statusData.ready) {
-                toast.success("Indexer ready! Redirecting to dashboard...");
-                router.push(`/contracts/${contractAddress}/home`);
-              } else {
-                // Retry after 1 second, max 15 attempts (15 seconds total)
-                if (attempt < 15) {
-                  setTimeout(() => checkIndexerReady(attempt + 1), 1000);
-                } else {
-                  toast.warning(
-                    "Indexer is taking longer than expected. Redirecting anyway..."
-                  );
-                  router.push(`/contracts/${contractAddress}/home`);
-                }
-              }
-            } catch (error) {
-              console.error("Error checking indexer status:", error);
-              // If status check fails, keep retrying up to 15 attempts
-              if (attempt >= 15) {
-                toast.warning(
-                  "Unable to verify indexer status. Redirecting to dashboard..."
-                );
-                router.push(`/contracts/${contractAddress}/home`);
-              } else {
-                setTimeout(() => checkIndexerReady(attempt + 1), 1000);
-              }
-            }
-          };
-
-          checkIndexerReady();
-        }
+        // The indexer will automatically detect the new contract from Convex
+        // Wait a moment for the contract to be written to Convex, then redirect
+        setTimeout(() => {
+          router.push(`/contracts/${contractAddress}/home`);
+        }, 2000);
       } catch (dbError) {
         console.error("Database save error:", dbError);
         toast.warning("Contract deployed but failed to save to registry");
