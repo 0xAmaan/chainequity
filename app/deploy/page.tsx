@@ -237,12 +237,12 @@ export default function DeployPage() {
                           <p className="text-xs font-mono break-all">{deployedAddress}</p>
                           {!isDevelopment && (
                             <a
-                              href={`https://sepolia.arbiscan.io/address/${deployedAddress}`}
+                              href={`https://sepolia.basescan.org/address/${deployedAddress}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs underline hover:text-green-200"
                             >
-                              View on Arbiscan
+                              View on Basescan
                             </a>
                           )}
                         </div>

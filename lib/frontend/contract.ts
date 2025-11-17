@@ -1,5 +1,5 @@
 import contractABI from "../../backend/src/lib/GatedEquityToken.abi.json";
-import { arbitrumSepolia, baseSepolia, localhost } from "./chains";
+import { baseSepolia, localhost } from "./chains";
 import { client } from "./client";
 import { getContract, type ThirdwebContract } from "thirdweb";
 import type { Chain } from "thirdweb/chains";
@@ -8,7 +8,6 @@ import type { Chain } from "thirdweb/chains";
 export const getChainById = (chainId: number): Chain => {
   if (chainId === 31337) return localhost;
   if (chainId === 84532) return baseSepolia;
-  if (chainId === 421614) return arbitrumSepolia;
   // Default to Base Sepolia for unknown chains
   return baseSepolia;
 };

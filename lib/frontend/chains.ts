@@ -19,7 +19,8 @@ export const baseSepolia = defineChain({
   testnet: true,
 });
 
-// Arbitrum Sepolia Testnet
+// Arbitrum Sepolia Testnet (deprecated - kept for backward compatibility)
+// @deprecated Use baseSepolia instead
 export const arbitrumSepolia = defineChain({
   id: 421614,
   name: "Arbitrum Sepolia",

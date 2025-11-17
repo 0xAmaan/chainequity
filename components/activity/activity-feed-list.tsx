@@ -140,10 +140,6 @@ export const ActivityFeedList = ({ events }: ActivityFeedListProps) => {
       // Base Sepolia
       return `https://sepolia.basescan.org/tx/${txHash}`;
     }
-    if (chainId === "421614") {
-      // Arbitrum Sepolia
-      return `https://sepolia.arbiscan.io/tx/${txHash}`;
-    }
     // For localhost/Anvil, there's no explorer
     return null;
   };

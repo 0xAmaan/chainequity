@@ -140,7 +140,7 @@ export const ContractSelectorModal = ({ open, onOpenChange }: ContractSelectorMo
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Chain:</span>
                         <span>
-                          {contract.chainId === 31337 ? "Localhost" : "Arb Sepolia"}
+                          {contract.chainId === 31337 ? "Localhost" : "Base Sepolia"}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">

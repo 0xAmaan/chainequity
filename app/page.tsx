@@ -92,7 +92,7 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Chain:</span>
-                      <span>{contract.chainId === 31337 ? "Localhost" : "Arbitrum Sepolia"}</span>
+                      <span>{contract.chainId === 31337 ? "Localhost" : "Base Sepolia"}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Deployed:</span>

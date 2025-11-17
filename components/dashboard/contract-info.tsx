@@ -87,7 +87,7 @@ export const ContractInfo = () => {
         <div className="flex justify-between items-center">
           <span className="text-sm text-muted-foreground">Chain</span>
           <span className="text-sm font-medium">
-            {String(chainId) === "31337" ? "Localhost" : "Arbitrum Sepolia"}
+            {String(chainId) === "31337" ? "Localhost" : "Base Sepolia"}
           </span>
         </div>
       </CardContent>
