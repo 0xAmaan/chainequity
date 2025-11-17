@@ -1,8 +1,7 @@
 "use client";
 
 import contractData from "../GatedEquityToken.abi.json";
-import { type TransactionReceipt } from "thirdweb";
-import { decodeEventLog } from "viem";
+import { decodeEventLog, type TransactionReceipt } from "viem";
 
 const CONTRACT_ABI = contractData.abi as any;
 
@@ -106,9 +105,9 @@ export const parseEventsFromReceipt = (receipt: TransactionReceipt): ParsedEvent
         abi: CONTRACT_ABI,
         data: log.data as `0x${string}`,
         topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
-      });
+      }) as { eventName: string; args: any };
 
-      const eventName = decoded.eventName as string;
+      const eventName = decoded.eventName;
 
       // Filter for events we care about
       if (
