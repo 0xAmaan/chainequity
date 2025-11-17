@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ThirdwebProvider } from "thirdweb/react";
+import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -16,10 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body>
-        <ThirdwebProvider>
+        <Providers>
           {children}
           <Toaster />
-        </ThirdwebProvider>
+        </Providers>
       </body>
     </html>
   );

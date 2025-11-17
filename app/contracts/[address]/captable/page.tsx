@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "convex/react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,67 +10,65 @@ import { CapTableChart } from "@/components/captable/cap-table-chart";
 import { CapTableDataTable } from "@/components/captable/cap-table-data-table";
 import { Download } from "lucide-react";
 import { useContract } from "@/lib/frontend/contract-context";
+import { api } from "@/convex/_generated/api";
 
 interface CapTableRow {
   address: string;
   balance: string;
-  ownership_percentage: string;
-  is_allowlisted: boolean;
+  ownershipPercentage: number;
+  isAllowlisted: boolean;
 }
 
 export default function CapTablePage() {
   const { contractAddress, isLoading: contractLoading } = useContract();
-  const [capTable, setCapTable] = useState<CapTableRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [blockNumber, setBlockNumber] = useState("");
-  const [currentBlock, setCurrentBlock] = useState<number | null>(null);
+  const [historicalBlock, setHistoricalBlock] = useState<string | null>(null);
 
-  const fetchCapTable = async (block?: string) => {
-    if (!contractAddress) return;
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-    setLoading(true);
-    try {
-      const url = block
-        ? `/api/captable?address=${contractAddress}&block=${block}`
-        : `/api/captable?address=${contractAddress}`;
-      const response = await fetch(url);
-      const data = await response.json();
+  // Get current cap table (auto-updates in real-time!)
+  const currentCapTable = useQuery(
+    api.captable.getCurrent,
+    contract?._id && !historicalBlock ? { contractId: contract._id } : "skip"
+  );
 
-      if (data.success) {
-        setCapTable(data.data);
-        setCurrentBlock(data.block);
-      } else {
-        alert(`Failed to fetch cap table: ${data.error}`);
-      }
-    } catch (error) {
-      console.error("Failed to fetch cap table:", error);
-      alert("Failed to fetch cap table");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Get historical cap table (if requested)
+  const historicalCapTable = useQuery(
+    api.captable.getAtBlock,
+    contract?._id && historicalBlock
+      ? { contractId: contract._id, blockNumber: historicalBlock }
+      : "skip"
+  );
 
-  useEffect(() => {
-    if (!contractLoading && contractAddress) {
-      fetchCapTable();
-    }
-  }, [contractAddress, contractLoading]);
+  const capTable = historicalBlock ? historicalCapTable : currentCapTable;
+  const loading = contractLoading || contract === undefined || capTable === undefined;
 
   const handleHistoricalFetch = () => {
     if (!blockNumber || isNaN(Number(blockNumber))) {
       alert("Please enter a valid block number");
       return;
     }
-    fetchCapTable(blockNumber);
+    setHistoricalBlock(blockNumber);
+  };
+
+  const handleResetToCurrentBlock = () => {
+    setHistoricalBlock(null);
+    setBlockNumber("");
   };
 
   const handleExportCSV = () => {
+    if (!capTable) return;
+
     const headers = ["Address", "Balance", "Ownership %", "Allowlisted"];
     const rows = capTable.map((row) => [
       row.address,
       row.balance,
-      row.ownership_percentage,
-      row.is_allowlisted ? "Yes" : "No",
+      row.ownershipPercentage,
+      row.isAllowlisted ? "Yes" : "No",
     ]);
 
     const csvContent = [
@@ -81,18 +80,20 @@ export default function CapTablePage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `captable-${currentBlock || "current"}.csv`;
+    a.download = `captable-${historicalBlock || "current"}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
   const handleExportJSON = () => {
+    if (!capTable) return;
+
     const jsonContent = JSON.stringify(capTable, null, 2);
     const blob = new Blob([jsonContent], { type: "application/json" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `captable-${currentBlock || "current"}.json`;
+    a.download = `captable-${historicalBlock || "current"}.json`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -104,7 +105,7 @@ export default function CapTablePage() {
           <div>
             <h2 className="text-2xl font-bold">Cap Table</h2>
             <p className="text-sm text-muted-foreground">
-              {currentBlock !== null ? `Viewing block ${currentBlock}` : "Current distribution"}
+              {historicalBlock ? `Viewing block ${historicalBlock}` : "Current distribution"}
             </p>
           </div>
 
@@ -114,7 +115,7 @@ export default function CapTablePage() {
               onClick={handleExportCSV}
               variant="outline"
               size="sm"
-              disabled={capTable.length === 0}
+              disabled={!capTable || capTable.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
@@ -123,7 +124,7 @@ export default function CapTablePage() {
               onClick={handleExportJSON}
               variant="outline"
               size="sm"
-              disabled={capTable.length === 0}
+              disabled={!capTable || capTable.length === 0}
             >
               <Download className="h-4 w-4 mr-2" />
               Export JSON
@@ -141,7 +142,7 @@ export default function CapTablePage() {
           <>
             {/* Chart and Table Side by Side - Always show to keep historical filter accessible */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {capTable.length > 0 ? (
+              {capTable && capTable.length > 0 ? (
                 <CapTableChart data={capTable} />
               ) : (
                 <Card>
@@ -153,11 +154,11 @@ export default function CapTablePage() {
                 </Card>
               )}
               <CapTableDataTable
-                data={capTable}
+                data={capTable || []}
                 blockNumber={blockNumber}
                 setBlockNumber={setBlockNumber}
                 onFetchHistorical={handleHistoricalFetch}
-                onReset={() => { setBlockNumber(""); fetchCapTable(); }}
+                onReset={handleResetToCurrentBlock}
                 loading={loading}
               />
             </div>

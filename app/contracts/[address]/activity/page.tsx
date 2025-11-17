@@ -1,71 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useQuery } from "convex/react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ActivityFeedList } from "@/components/activity/activity-feed-list";
 import { useContract } from "@/lib/frontend/contract-context";
-
-interface ActivityEvent {
-  event_type: string;
-  from_address: string | null;
-  to_address: string | null;
-  amount: string | null;
-  block_number: number;
-  tx_hash: string;
-  timestamp: string;
-  metadata: any;
-}
+import { api } from "@/convex/_generated/api";
 
 export default function ActivityPage() {
   const { contractAddress, isLoading: contractLoading } = useContract();
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [eventType, setEventType] = useState<string>("all");
-  const [autoRefresh, setAutoRefresh] = useState(false);
 
-  const fetchEvents = async (type?: string) => {
-    if (!contractAddress) return;
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-    setLoading(true);
-    try {
-      const typeParam = type && type !== "all" ? `&type=${type}` : "";
-      const url = `/api/activity?address=${contractAddress}${typeParam}&limit=100`;
+  // Get activity events from Convex (auto-updates in real-time!)
+  const events = useQuery(
+    api.activity.getRecent,
+    contract?._id
+      ? {
+          contractId: contract._id,
+          limit: 100,
+          eventType: eventType === "all" ? undefined : eventType,
+        }
+      : "skip"
+  );
 
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.success) {
-        setEvents(data.data);
-      } else {
-        alert(`Failed to fetch activity: ${data.error}`);
-      }
-    } catch (error) {
-      console.error("Failed to fetch activity:", error);
-      alert("Failed to fetch activity feed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!contractLoading && contractAddress) {
-      fetchEvents(eventType);
-    }
-  }, [eventType, contractAddress, contractLoading]);
-
-  // Auto-refresh every 10 seconds if enabled
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchEvents(eventType);
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh, eventType]);
+  const loading = contractLoading || contract === undefined || events === undefined;
 
   const handleTypeChange = (value: string) => {
     setEventType(value);
@@ -98,16 +64,9 @@ export default function ActivityPage() {
                 <SelectItem value="metadata_change">Metadata Changes</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant={autoRefresh ? "default" : "outline"}
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              size="sm"
-            >
-              {autoRefresh ? "Auto On" : "Auto Off"}
-            </Button>
-            <Button onClick={() => fetchEvents(eventType)} variant="outline" size="sm" disabled={loading}>
-              Refresh
-            </Button>
+            <div className="px-2 py-1 text-xs text-green-400 bg-green-950/30 rounded border border-green-700">
+              ⚡ Live
+            </div>
           </div>
         </div>
 
@@ -117,7 +76,7 @@ export default function ActivityPage() {
               <p className="text-muted-foreground">Loading activity...</p>
             </CardContent>
           </Card>
-        ) : events.length === 0 ? (
+        ) : !events || events.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground">

@@ -9,7 +9,7 @@ interface ActivityEvent {
   from_address: string | null;
   to_address: string | null;
   amount: string | null;
-  block_number: number;
+  block_number: string;
   tx_hash: string;
   timestamp: string;
   metadata: any;

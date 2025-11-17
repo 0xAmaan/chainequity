@@ -1,43 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useQuery } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { useContract } from "@/lib/frontend/contract-context";
+import { api } from "@/convex/_generated/api";
 
 interface ActivityEvent {
   event_type: string;
   from_address: string | null;
   to_address: string | null;
   amount: string | null;
-  block_number: number;
-  timestamp: string;
+  block_number: string;
   tx_hash: string;
+  timestamp: string;
+  metadata: any;
 }
 
 export const RecentActivityPreview = () => {
-  const [events, setEvents] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { contractAddress, isLoading: contractLoading } = useContract();
 
-  useEffect(() => {
-    const fetchActivity = async () => {
-      try {
-        const response = await fetch("/api/activity?limit=5");
-        const data = await response.json();
-        if (data.success) {
-          setEvents(data.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch activity:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Get contract from Convex
+  const contract = useQuery(
+    api.contracts.getByAddress,
+    contractAddress ? { contractAddress: contractAddress.toLowerCase() } : "skip"
+  );
 
-    fetchActivity();
-  }, []);
+  // Get recent activity (auto-updates in real-time!)
+  const events = useQuery(
+    api.activity.getRecent,
+    contract?._id ? { contractId: contract._id, limit: 5 } : "skip"
+  );
+
+  const loading = contractLoading || contract === undefined || events === undefined;
 
   const getEventBadgeVariant = (eventType: string): "default" | "secondary" => {
     return eventType === "transfer" ? "secondary" : "default";
