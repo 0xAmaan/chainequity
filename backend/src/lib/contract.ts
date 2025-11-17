@@ -30,6 +30,9 @@ export class ChainEquityContract {
   private contractAddress: Address;
 
   constructor(config: Config) {
+    if (!config.contractAddress) {
+      throw new Error("Contract address is required");
+    }
     this.contractAddress = config.contractAddress;
 
     // Create account from private key

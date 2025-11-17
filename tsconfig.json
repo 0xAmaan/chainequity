@@ -45,6 +45,7 @@
     "test",
     "out",
     "node_modules",
-    "-resources/*"
+    "-resources/*",
+    "z-FigmaDesign"
   ]
 }

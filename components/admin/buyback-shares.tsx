@@ -30,6 +30,11 @@ export const BuybackShares = () => {
 
     const amountInWei = BigInt(Math.floor(Number(amount) * 10 ** 18));
 
+    if (!contractInstance) {
+      toast.error("Contract not initialized");
+      return;
+    }
+
     const transaction = prepareContractCall({
       contract: contractInstance,
       method: "function buyback(address holder, uint256 amount)",

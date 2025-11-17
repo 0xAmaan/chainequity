@@ -26,7 +26,7 @@ export const CheckAddressStatus = () => {
   const { data: isAllowlisted, isLoading: isLoadingAllowlist } = useReadContract({
     contract: dummyContract as any,
     method: "function isAllowlisted(address account) view returns (bool)",
-    params: searchAddress ? [searchAddress as `0x${string}`] : undefined,
+    params: searchAddress ? [searchAddress as `0x${string}`] : [] as any,
     queryOptions: { enabled: !!contractInstance && !!searchAddress },
   });
 
@@ -34,7 +34,7 @@ export const CheckAddressStatus = () => {
   const { data: balance, isLoading: isLoadingBalance } = useReadContract({
     contract: dummyContract as any,
     method: "function balanceOf(address account) view returns (uint256)",
-    params: searchAddress ? [searchAddress as `0x${string}`] : undefined,
+    params: searchAddress ? [searchAddress as `0x${string}`] : [] as any,
     queryOptions: { enabled: !!contractInstance && !!searchAddress },
   });
 

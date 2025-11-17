@@ -28,6 +28,11 @@ export const MetadataChange = () => {
       return;
     }
 
+    if (!contractInstance) {
+      toast.error("Contract not initialized");
+      return;
+    }
+
     const transaction = prepareContractCall({
       contract: contractInstance,
       method: "function changeMetadata(string name, string symbol)",

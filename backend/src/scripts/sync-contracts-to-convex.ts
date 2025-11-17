@@ -4,25 +4,28 @@
  * Sync existing contracts from PostgreSQL to Convex
  * Run this before starting the indexer with Convex integration
  */
+import { loadConfig } from "../lib/config";
 import { convexIndexer } from "../lib/convex-client";
 import { Database } from "../lib/db";
 import { logger } from "../lib/logger";
 
+const config = loadConfig();
+
 async function syncContractsToConvex() {
   logger.info("🔄 Syncing contracts from PostgreSQL to Convex...");
 
-  const db = new Database();
+  const db = new Database(config);
 
   try {
     // Connect to PostgreSQL
     await db.testConnection();
 
     // Get all active contracts from PostgreSQL
-    const result = await db
-      .getClient()
-      .query(
-        "SELECT id, contract_address, name, symbol, decimals, chain_id, deployed_at, deployed_by FROM contracts WHERE is_active = TRUE",
-      );
+    const client = await db.getClient();
+    const result = await client.query(
+      "SELECT id, contract_address, name, symbol, decimals, chain_id, deployed_at, deployed_by FROM contracts WHERE is_active = TRUE",
+    );
+    client.release();
 
     const contracts = result.rows;
 

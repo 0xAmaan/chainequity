@@ -53,10 +53,10 @@ async function main() {
     let name, symbol, decimals, owner;
     try {
       [name, symbol, decimals, owner] = await Promise.all([
-        contract.read.name(),
-        contract.read.symbol(),
-        contract.read.decimals(),
-        contract.read.owner(),
+        contract.read.name([]),
+        contract.read.symbol([]),
+        contract.read.decimals([]),
+        contract.read.owner([]),
       ]);
     } catch (error: any) {
       console.error(

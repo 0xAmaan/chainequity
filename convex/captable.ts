@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 /**
  * Get current cap table (ownership distribution) for a contract
- * Returns: array of { address, balance, ownershipPercentage, isAllowlisted }
+ * Returns: array of { address, balance, ownership_percentage, is_allowlisted }
  */
 export const getCurrent = query({
   args: {
@@ -51,7 +51,7 @@ export const getCurrent = query({
       return {
         address: balance.address,
         balance: balance.balance,
-        ownership_percentage: ownershipPercentage,
+        ownership_percentage: ownershipPercentage.toString(),
         is_allowlisted: allowlistMap.get(balance.address.toLowerCase()) || false,
       };
     });
@@ -164,8 +164,8 @@ export const getAtBlock = query({
       return {
         address: item.address,
         balance: item.balance,
-        ownershipPercentage,
-        isAllowlisted: allowlistMap.get(item.address.toLowerCase()) || false,
+        ownership_percentage: ownershipPercentage.toString(),
+        is_allowlisted: allowlistMap.get(item.address.toLowerCase()) || false,
       };
     });
 

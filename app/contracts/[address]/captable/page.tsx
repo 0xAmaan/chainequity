@@ -15,8 +15,8 @@ import { api } from "@/convex/_generated/api";
 interface CapTableRow {
   address: string;
   balance: string;
-  ownershipPercentage: number;
-  isAllowlisted: boolean;
+  ownership_percentage: string;
+  is_allowlisted: boolean;
 }
 
 export default function CapTablePage() {
@@ -67,8 +67,8 @@ export default function CapTablePage() {
     const rows = capTable.map((row) => [
       row.address,
       row.balance,
-      row.ownershipPercentage,
-      row.isAllowlisted ? "Yes" : "No",
+      row.ownership_percentage,
+      row.is_allowlisted ? "Yes" : "No",
     ]);
 
     const csvContent = [

@@ -28,7 +28,7 @@ export const getContractInstance = (
     client,
     address,
     chain,
-    abi: contractABI,
+    abi: contractABI as any,
   });
 };
 
@@ -43,6 +43,6 @@ export const gatedEquityContract = legacyContractAddress
       client,
       address: legacyContractAddress,
       chain: defaultChain,
-      abi: contractABI,
+      abi: contractABI as any,
     })
   : null;

@@ -102,17 +102,25 @@ export class Database {
   async getIndexerState(): Promise<IndexerState> {
     const contractId = this.getContractId();
     const result = await this.pool.query(
-      "SELECT * FROM indexer_state WHERE contract_id = $1",
+      "SELECT i.*, c.contract_address FROM indexer_state i JOIN contracts c ON i.contract_id = c.id WHERE i.contract_id = $1",
       [contractId],
     );
     if (result.rows.length === 0) {
+      // Get contract address for initial state
+      const contractResult = await this.pool.query(
+        "SELECT contract_address FROM contracts WHERE id = $1",
+        [contractId],
+      );
+      const contractAddress = contractResult.rows[0]?.contract_address || "";
+
       // Create initial state for this contract
       await this.pool.query(
         "INSERT INTO indexer_state (contract_id, last_processed_block, is_syncing) VALUES ($1, 0, FALSE)",
         [contractId],
       );
       return {
-        contract_id: contractId,
+        id: 0,
+        contract_address: contractAddress,
         last_processed_block: BigInt(0),
         is_syncing: false,
         last_updated_at: new Date(),
