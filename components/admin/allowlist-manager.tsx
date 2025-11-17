@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { client } from "@/lib/frontend/client";
+import { getChainById } from "@/lib/frontend/contract";
 
 export const AllowlistManager = () => {
-  const { contractInstance } = useContract();
+  const { contractInstance, contractData } = useContract();
   const { indexAllowlistEvents } = useIndexEvents();
   const [address, setAddress] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -49,7 +50,14 @@ export const AllowlistManager = () => {
           console.log("Transaction sent:", result.transactionHash);
 
           // Wait for confirmation and index events
-          const receipt = await waitForReceipt(client, result);
+          if (!contractData) {
+            throw new Error("Contract data not available");
+          }
+          const receipt = await waitForReceipt({
+            client,
+            chain: getChainById(contractData.chainId),
+            transactionHash: result.transactionHash,
+          });
 
           if (receipt.status === "success") {
             try {
@@ -107,7 +115,14 @@ export const AllowlistManager = () => {
           console.log("Transaction sent:", result.transactionHash);
 
           // Wait for confirmation and index events
-          const receipt = await waitForReceipt(client, result);
+          if (!contractData) {
+            throw new Error("Contract data not available");
+          }
+          const receipt = await waitForReceipt({
+            client,
+            chain: getChainById(contractData.chainId),
+            transactionHash: result.transactionHash,
+          });
 
           if (receipt.status === "success") {
             try {

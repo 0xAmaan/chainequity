@@ -14,9 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { client } from "@/lib/frontend/client";
+import { getChainById } from "@/lib/frontend/contract";
 
 export const StockSplit = () => {
-  const { contractInstance, contractAddress } = useContract();
+  const { contractInstance, contractAddress, contractData } = useContract();
   const { indexTransferEvents } = useIndexEvents();
   const [multiplier, setMultiplier] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -75,7 +76,14 @@ export const StockSplit = () => {
           console.log("Transaction sent:", result.transactionHash);
 
           // Wait for confirmation and index events (split emits Transfer events)
-          const receipt = await waitForReceipt(client, result);
+          if (!contractData) {
+            throw new Error("Contract data not available");
+          }
+          const receipt = await waitForReceipt({
+            client,
+            chain: getChainById(contractData.chainId),
+            transactionHash: result.transactionHash,
+          });
 
           if (receipt.status === "success") {
             try {

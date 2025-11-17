@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { client } from "@/lib/frontend/client";
+import { getChainById } from "@/lib/frontend/contract";
 
 export const MetadataChange = () => {
-  const { contractInstance } = useContract();
+  const { contractInstance, contractData } = useContract();
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const { mutate: sendTransaction, isPending, data: transactionResult } = useSendTransaction();
@@ -53,7 +54,14 @@ export const MetadataChange = () => {
           console.log("Transaction sent:", result.transactionHash);
 
           // Wait for confirmation
-          const receipt = await waitForReceipt(client, result);
+          if (!contractData) {
+            throw new Error("Contract data not available");
+          }
+          const receipt = await waitForReceipt({
+            client,
+            chain: getChainById(contractData.chainId),
+            transactionHash: result.transactionHash,
+          });
 
           if (receipt.status === "success") {
             // Note: Metadata changes don't emit events that need indexing
